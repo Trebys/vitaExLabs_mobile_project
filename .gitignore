@@ -1,0 +1,11 @@
+# Ignora directorios de caché de Python
+__pycache__/
+*.pyc
+
+# Ignora entornos virtuales de Python
+myenv/
+
+# Ignora archivos y carpetas innecesarios
+*.log
+*.sqlite3
+*.env
