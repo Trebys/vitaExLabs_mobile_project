@@ -1,7 +1,7 @@
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-
+import Foundation from "@expo/vector-icons/Foundation";
 //Tambien se pueden poner los iconos svg en un archivo separado como el logo
 
 export const UserIcon = (props) => (
@@ -46,4 +46,28 @@ export const CheckIcon = (props) => (
 
 export const FileUploadIcon = (props) => (
   <FontAwesome5 name="file-upload" size={24} color="green" {...props} />
+);
+
+export const SerchIcon = (props) => (
+  <FontAwesome name="search" size={24} color="green" {...props} />
+);
+
+export const FilterIcon = (props) => (
+  <FontAwesome name="filter" size={24} color="green" {...props} />
+);
+
+export const EditIcon = (props) => (
+  <FontAwesome name="edit" size={24} color="green" {...props} />
+);
+
+export const ExportIcon = (props) => (
+  <FontAwesome5 name="file-export" size={24} color="green" />
+);
+
+export const ResultsIcon = (props) => (
+  <Foundation name="results" size={24} color="green" />
+);
+
+export const ViewFileIcon = (props) => (
+  <FontAwesome5 name="eye" size={24} color="green" />
 );

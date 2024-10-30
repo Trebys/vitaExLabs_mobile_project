@@ -1,5 +1,6 @@
-import React from "react";
-import { View, TextInput, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { View, TextInput, StyleSheet, Pressable } from "react-native";
+import { FontAwesome } from "@expo/vector-icons";
 
 const TextInputComponent = ({
   placeholder,
@@ -7,16 +8,28 @@ const TextInputComponent = ({
   value,
   onChangeText,
 }) => {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   return (
     <View style={styles.inputContainer}>
       <TextInput
         style={styles.textInput}
         placeholder={placeholder}
-        secureTextEntry={secureTextEntry}
-        placeholderTextColor="#808080" // Color del placeholder
-        value={value} // Asegurarse de que el valor esté conectado con el estado
-        onChangeText={onChangeText} // Asegurarse de que los cambios actualicen el estado
+        secureTextEntry={secureTextEntry && !isPasswordVisible}
+        placeholderTextColor="#808080"
+        value={value}
+        onChangeText={onChangeText}
       />
+      {secureTextEntry && (
+        <Pressable onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+          <FontAwesome
+            name={isPasswordVisible ? "eye-slash" : "eye"}
+            size={20}
+            color="gray"
+            style={styles.icon}
+          />
+        </Pressable>
+      )}
     </View>
   );
 };
@@ -24,15 +37,22 @@ const TextInputComponent = ({
 const styles = StyleSheet.create({
   inputContainer: {
     width: "100%",
-    marginBottom: 16, // 16 unidades de margen inferior para separar los inputs
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#F3F4F6",
   },
   textInput: {
-    height: 48, // Altura del input (12 unidades como en Tailwind)
-    borderWidth: 1,
-    borderColor: "#D1D5DB", // Gris claro (equivalente a 'border-gray-300')
-    paddingHorizontal: 16, // Padding horizontal (px-4 en Tailwind)
-    borderRadius: 8, // Bordes redondeados (lg en Tailwind)
-    backgroundColor: "#F3F4F6", // Fondo gris claro (bg-gray-100 en Tailwind)
+    flex: 1,
+    height: 48,
+    fontSize: 16,
+  },
+  icon: {
+    marginLeft: 10,
   },
 });
 

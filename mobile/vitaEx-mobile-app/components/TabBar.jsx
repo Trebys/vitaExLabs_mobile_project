@@ -32,11 +32,17 @@ export function TabBar() {
       >
         <UserIcon
           size={28}
-          style={activeTab === "/user_page" ? styles.activeIcon : styles.icon}
+          style={
+            activeTab === "/user_page" || activeTab === "/my_data_page"
+              ? styles.activeIcon
+              : styles.icon
+          }
         />
         <Text
           style={
-            activeTab === "/user_page" ? styles.activeText : styles.inactiveText
+            activeTab === "/user_page" || activeTab === "/my_data_page"
+              ? styles.activeText
+              : styles.inactiveText
           }
         >
           Usuario
@@ -100,6 +106,7 @@ export function TabBar() {
         </Text>
       </Pressable>
 
+      {/* Condición para el ícono Upload */}
       <Pressable
         style={styles.tabItem}
         onPress={() => handleTabPress("/upload_data_page")}
@@ -107,12 +114,16 @@ export function TabBar() {
         <UploadIcon
           size={28}
           style={
-            activeTab === "/upload_data_page" ? styles.activeIcon : styles.icon
+            activeTab === "/upload_data_page" ||
+            activeTab === "/my_researchs_page" // Aseguramos que esté verde en ambas páginas
+              ? styles.activeIcon
+              : styles.icon
           }
         />
         <Text
           style={
-            activeTab === "/upload_data_page"
+            activeTab === "/upload_data_page" ||
+            activeTab === "/my_researchs_page" // Cambia también el texto
               ? styles.activeText
               : styles.inactiveText
           }

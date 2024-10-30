@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from cryptography.fernet import Fernet
+
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,6 +46,10 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'core',
     'corsheaders',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'two_factor',
+    #'two_factor.plugins.phonenumber',  # opcional si deseas soporte para SMS
 ]
 
 MIDDLEWARE = [
@@ -52,9 +61,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django_otp.middleware.OTPMiddleware',  # necesario para OTP
 ]
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.0.2.2']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.0.2.2', '*']
+
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -127,6 +138,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+    {
+        'NAME': 'core.validators.CustomPasswordValidator',  
+    },
 ]
 
 
@@ -139,6 +153,26 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
+#Correo
+# Configuración SMTP usando Gmail
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "vitaexlabs@gmail.com"  # Tu dirección de correo electrónico
+EMAIL_HOST_PASSWORD = "hdye ltmm dteg ersc"  # Tu contraseña de correo electrónico
+
+#EMAIL_HOST_USER = "estelopez2014@gmail.com"  # Tu dirección de correo electrónico
+#EMAIL_HOST_PASSWORD = "pzvr jttc taez vqmu" 
+
+
+# Genera una clave una vez y guárdala en un lugar seguro
+# Ejecuta una vez: Fernet.generate_key().decode()
+ENCRYPTION_KEY = 'J9phw8OzWk1NzjH5d_oLKrIr7pTbBOqzMPvgx6vZ8mA='  # Clave de encriptación
+
+
+
+
 
 
 # Static files (CSS, JavaScript, Images)
@@ -146,10 +180,12 @@ USE_TZ = True
 
 #Revisar si lo necesito para la subida de archivos
 STATIC_URL = '/static/'
-MEDIA_URL = '/media/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Para producción
-MEDIA_ROOT = BASE_DIR / 'media'  # Carpeta de archivos subidos
 
+# Definir el directorio donde se almacenarán los archivos cargados
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 

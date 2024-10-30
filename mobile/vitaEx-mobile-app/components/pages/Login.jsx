@@ -9,23 +9,22 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import { useRouter } from "expo-router"; // Importa el hook useRouter de expo-router
+import { useRouter } from "expo-router";
 import TextInputComponent from "../TextInputComponent";
-import axios from "axios"; // Para hacer la solicitud HTTP
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Importa las imágenes locales
 const labImage = require("../../assets/womes_background.jpg");
 const vitaexLogo = require("../../assets/vitaex_logo.jpeg");
 
 export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter(); // Hook para navegar entre rutas de expo-router
+  const [verificationCode, setVerificationCode] = useState(""); // Nuevo estado para el código de verificación
+  const [step, setStep] = useState(1); // 1 para login, 2 para verificación
+  const router = useRouter();
 
   const handleLogin = async () => {
-    console.log("Usuario ingresado:", username);
-    console.log("Contraseña ingresada:", password);
-
     if (!username || !password) {
       Alert.alert(
         "Error",
@@ -38,28 +37,58 @@ export function Login() {
       const response = await axios.post(
         "http://10.0.2.2:8000/api/token-auth/",
         {
-          username: username,
-          password: password,
+          username,
+          password,
         },
       );
 
-      const token = response.data.token;
-      console.log("Token recibido:", token);
-      Alert.alert("Inicio de sesión exitoso");
-
-      // Redirige a la página principal utilizando el hook de expo-router
-      router.push("/main_page"); // Asegúrate de que la ruta /Main exista
+      if (response.data.message?.includes("Código de verificación enviado")) {
+        Alert.alert("Verificación Requerida", response.data.message);
+        setStep(2); // Cambia al paso de verificación de código
+      } else if (response.data.token) {
+        const token = response.data.token;
+        await AsyncStorage.setItem("username", username); // Guarda el username en AsyncStorage
+        await AsyncStorage.setItem("token", token); // Guarda el token en AsyncStorage
+        Alert.alert("Inicio de sesión exitoso");
+        router.push("/main_page");
+      }
     } catch (error) {
-      if (error.response) {
-        console.log("Error en el servidor:", error.response.data);
-        Alert.alert(
-          "Error",
-          error.response.data.detail || "Credenciales incorrectas",
-        );
+      const message = error.response?.data.message;
+      if (message) {
+        Alert.alert("Error", message);
       } else {
         console.log("Error en la solicitud:", error.message);
         Alert.alert("Error", "Error de conexión");
       }
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode) {
+      Alert.alert("Error", "Por favor, ingresa el código de verificación.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        "http://10.0.2.2:8000/api/verify-code/",
+        {
+          username,
+          code: verificationCode,
+        },
+      );
+
+      if (response.data.valid) {
+        const token = response.data.token;
+        await AsyncStorage.setItem("username", username); // Guarda el username en AsyncStorage
+        await AsyncStorage.setItem("token", token); // Guarda el token en AsyncStorage
+        Alert.alert("Inicio de sesión exitoso");
+        router.push("/main_page");
+      } else {
+        Alert.alert("Error", "Código incorrecto o expirado.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Hubo un problema al verificar el código.");
     }
   };
 
@@ -117,9 +146,16 @@ export function Login() {
           value={password}
           onChangeText={(text) => setPassword(text)}
         />
+        {step === 2 && (
+          <TextInputComponent
+            placeholder="Código de verificación"
+            value={verificationCode}
+            onChangeText={(text) => setVerificationCode(text)}
+          />
+        )}
       </View>
 
-      <Pressable>
+      <Pressable onPress={() => router.push("/change_password_page")}>
         <Text
           style={
             Platform.OS === "web"
@@ -135,21 +171,22 @@ export function Login() {
         style={
           Platform.OS === "web" ? styles.loginButtonWeb : styles.loginButton
         }
-        onPress={handleLogin}
+        onPress={step === 1 ? handleLogin : handleVerifyCode}
       >
-        <Text style={styles.loginButtonText}>Entrar</Text>
+        <Text style={styles.loginButtonText}>
+          {step === 1 ? "Entrar" : "Verificar Código"}
+        </Text>
       </Pressable>
 
       <View style={styles.registerContainer}>
         <Text style={styles.registerText}>¿No estás registrado?</Text>
-        <Pressable>
+        <Pressable onPress={() => router.push("/register_page")}>
           <Text style={styles.registerLink}>Regístrate ahora</Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   // Estilos generales
   safeAreaView: {
