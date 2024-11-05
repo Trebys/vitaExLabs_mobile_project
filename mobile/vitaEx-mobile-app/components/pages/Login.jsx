@@ -8,6 +8,7 @@ import {
   Image,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import TextInputComponent from "../TextInputComponent";
@@ -20,8 +21,9 @@ const vitaexLogo = require("../../assets/vitaex_logo.jpeg");
 export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [verificationCode, setVerificationCode] = useState(""); // Nuevo estado para el código de verificación
-  const [step, setStep] = useState(1); // 1 para login, 2 para verificación
+  const [verificationCode, setVerificationCode] = useState("");
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false); // Estado para el indicador de carga
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -33,6 +35,8 @@ export function Login() {
       return;
     }
 
+    setLoading(true); // Mostrar indicador de carga
+
     try {
       const response = await axios.post(
         "http://10.0.2.2:8000/api/token-auth/",
@@ -42,6 +46,7 @@ export function Login() {
         },
       );
 
+      // Verificar si el mensaje requiere un código de verificación
       if (response.data.message?.includes("Código de verificación enviado")) {
         Alert.alert("Verificación Requerida", response.data.message);
         setStep(2); // Cambia al paso de verificación de código
@@ -55,11 +60,13 @@ export function Login() {
     } catch (error) {
       const message = error.response?.data.message;
       if (message) {
-        Alert.alert("Error", message);
+        Alert.alert("Error", message); // Mensaje de error específico
       } else {
         console.log("Error en la solicitud:", error.message);
         Alert.alert("Error", "Error de conexión");
       }
+    } finally {
+      setLoading(false); // Ocultar indicador de carga
     }
   };
 
@@ -68,6 +75,8 @@ export function Login() {
       Alert.alert("Error", "Por favor, ingresa el código de verificación.");
       return;
     }
+
+    setLoading(true); // Mostrar indicador de carga
 
     try {
       const response = await axios.post(
@@ -80,8 +89,8 @@ export function Login() {
 
       if (response.data.valid) {
         const token = response.data.token;
-        await AsyncStorage.setItem("username", username); // Guarda el username en AsyncStorage
-        await AsyncStorage.setItem("token", token); // Guarda el token en AsyncStorage
+        await AsyncStorage.setItem("username", username);
+        await AsyncStorage.setItem("token", token);
         Alert.alert("Inicio de sesión exitoso");
         router.push("/main_page");
       } else {
@@ -89,6 +98,8 @@ export function Login() {
       }
     } catch (error) {
       Alert.alert("Error", "Hubo un problema al verificar el código.");
+    } finally {
+      setLoading(false); // Ocultar indicador de carga
     }
   };
 
@@ -155,6 +166,15 @@ export function Login() {
         )}
       </View>
 
+      {/* Indicador de carga */}
+      {loading && (
+        <ActivityIndicator
+          size="large"
+          color="#38A169"
+          style={{ marginTop: 10 }}
+        />
+      )}
+
       <Pressable onPress={() => router.push("/change_password_page")}>
         <Text
           style={
@@ -172,6 +192,7 @@ export function Login() {
           Platform.OS === "web" ? styles.loginButtonWeb : styles.loginButton
         }
         onPress={step === 1 ? handleLogin : handleVerifyCode}
+        disabled={loading} // Desactivar botón mientras se está cargando
       >
         <Text style={styles.loginButtonText}>
           {step === 1 ? "Entrar" : "Verificar Código"}

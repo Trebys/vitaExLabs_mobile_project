@@ -15,8 +15,6 @@ import os
 from cryptography.fernet import Fernet
 
 
-
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -49,7 +47,7 @@ INSTALLED_APPS = [
     'django_otp',
     'django_otp.plugins.otp_totp',
     'two_factor',
-    #'two_factor.plugins.phonenumber',  # opcional si deseas soporte para SMS
+    # 'two_factor.plugins.phonenumber',  # opcional si deseas soporte para SMS
 ]
 
 MIDDLEWARE = [
@@ -67,7 +65,6 @@ MIDDLEWARE = [
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.0.2.2', '*']
 
 
-
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',  # Si estás usando React en web
     'http://localhost:19006',
@@ -80,7 +77,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # Requiere autenticación para todas las vistas por defecto
+        # Requiere autenticación para todas las vistas por defecto
+        'rest_framework.permissions.IsAuthenticated',
     ],
 }
 
@@ -114,13 +112,24 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'vitaex_db',         # Nombre de la base de datos que creaste
         'USER': 'postgres',
-        'PASSWORD': 'TrebysPost20', # Contraseña del usuario
-        'HOST': 'localhost',          # Servidor de base de datos (localhost para desarrollo)
+        'PASSWORD': 'TrebysPost20',  # Contraseña del usuario
+        # Servidor de base de datos (localhost para desarrollo)
+        'HOST': 'localhost',
         'PORT': '5432',               # Puerto predeterminado de PostgreSQL
     }
 }
 
 AUTH_USER_MODEL = 'core.Usuario'
+
+# settings.py
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',  # Identificador único para el caché en memoria
+    }
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -139,7 +148,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
     {
-        'NAME': 'core.validators.CustomPasswordValidator',  
+        'NAME': 'core.validators.CustomPasswordValidator',
     },
 ]
 
@@ -153,17 +162,18 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-#Correo
+# Correo
 # Configuración SMTP usando Gmail
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "vitaexlabs@gmail.com"  # Tu dirección de correo electrónico
-EMAIL_HOST_PASSWORD = "hdye ltmm dteg ersc"  # Tu contraseña de correo electrónico
+# Tu contraseña de correo electrónico
+EMAIL_HOST_PASSWORD = "hdye ltmm dteg ersc"
 
-#EMAIL_HOST_USER = "estelopez2014@gmail.com"  # Tu dirección de correo electrónico
-#EMAIL_HOST_PASSWORD = "pzvr jttc taez vqmu" 
+# EMAIL_HOST_USER = "estelopez2014@gmail.com"  # Tu dirección de correo electrónico
+# EMAIL_HOST_PASSWORD = "pzvr jttc taez vqmu"
 
 
 # Genera una clave una vez y guárdala en un lugar seguro
@@ -171,14 +181,10 @@ EMAIL_HOST_PASSWORD = "hdye ltmm dteg ersc"  # Tu contraseña de correo electró
 ENCRYPTION_KEY = 'J9phw8OzWk1NzjH5d_oLKrIr7pTbBOqzMPvgx6vZ8mA='  # Clave de encriptación
 
 
-
-
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-#Revisar si lo necesito para la subida de archivos
+# Revisar si lo necesito para la subida de archivos
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Para producción
 

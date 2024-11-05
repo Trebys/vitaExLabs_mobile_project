@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Pressable,
   Text,
@@ -8,6 +8,8 @@ import {
   Switch,
   StyleSheet,
   Alert,
+  Modal,
+  TextInput,
 } from "react-native";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
@@ -20,16 +22,95 @@ export function Register() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [favoriteColor, setFavoriteColor] = useState(""); // Nuevo campo
-  const [petsName, setPetsName] = useState(""); // Nuevo campo
+  const [favoriteColor, setFavoriteColor] = useState("");
+  const [petsName, setPetsName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("Investigador");
   const [isSelected, setSelection] = useState(false);
 
+  const [countries, setCountries] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [cantons, setCantons] = useState([]);
+  const [districts, setDistricts] = useState([]);
+
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedCanton, setSelectedCanton] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+
+  const [verificationModalVisible, setVerificationModalVisible] =
+    useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
   const router = useRouter();
 
   const roles = ["Investigador", "Científico", "Colaborador"];
+
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const response = await axios.get("http://10.0.2.2:8000/api/paises/");
+        setCountries(response.data);
+      } catch (error) {
+        console.error("Error al obtener los países:", error);
+      }
+    };
+    fetchCountries();
+  }, []);
+
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      if (selectedCountry) {
+        try {
+          const response = await axios.get(
+            `http://10.0.2.2:8000/api/provincias/${selectedCountry}`,
+          );
+          setProvinces(response.data);
+          setCantons([]);
+          setDistricts([]);
+          setSelectedProvince("");
+        } catch (error) {
+          console.error("Error al obtener las provincias:", error);
+        }
+      }
+    };
+    fetchProvinces();
+  }, [selectedCountry]);
+
+  useEffect(() => {
+    const fetchCantons = async () => {
+      if (selectedProvince) {
+        try {
+          const response = await axios.get(
+            `http://10.0.2.2:8000/api/cantones/${selectedProvince}`,
+          );
+          setCantons(response.data);
+          setDistricts([]);
+          setSelectedCanton("");
+        } catch (error) {
+          console.error("Error al obtener los cantones:", error);
+        }
+      }
+    };
+    fetchCantons();
+  }, [selectedProvince]);
+
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (selectedCanton) {
+        try {
+          const response = await axios.get(
+            `http://10.0.2.2:8000/api/distritos/${selectedCanton}`,
+          );
+          setDistricts(response.data);
+          setSelectedDistrict("");
+        } catch (error) {
+          console.error("Error al obtener los distritos:", error);
+        }
+      }
+    };
+    fetchDistricts();
+  }, [selectedCanton]);
 
   const handleRegister = async () => {
     if (!isSelected) {
@@ -43,53 +124,100 @@ export function Register() {
     }
 
     try {
+      const response = await axios.post(
+        "http://10.0.2.2:8000/api/email-and-code-verification/",
+        {
+          email,
+        },
+      );
+
+      if (
+        response.data.message ===
+        "Código de verificación enviado al correo. Por favor ingrésalo para continuar."
+      ) {
+        setVerificationCode(""); // Reiniciar el código de verificación
+        setVerificationModalVisible(true); // Mostrar el modal para ingresar el código
+      }
+    } catch (error) {
+      if (error.response && error.response.data.error) {
+        Alert.alert("Error", error.response.data.error);
+      } else {
+        Alert.alert("Error", "Hubo un problema al verificar el correo.");
+      }
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    try {
+      const response = await axios.post(
+        "http://10.0.2.2:8000/api/email-and-code-verification/",
+        {
+          email,
+          code: verificationCode,
+        },
+      );
+
+      if (
+        response.data.message ===
+        "Código verificado correctamente. Ahora puedes proceder con el registro completo."
+      ) {
+        await handleFinalRegistration();
+      }
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Código de verificación incorrecto o ha expirado. Intenta nuevamente.",
+      );
+    }
+  };
+
+  const handleFinalRegistration = async () => {
+    const ubicacionJson = {
+      pais:
+        countries.find((country) => country.cod_ubicacion === selectedCountry)
+          ?.nombre || "",
+      provincia:
+        provinces.find(
+          (province) => province.cod_ubicacion === selectedProvince,
+        )?.nombre || "",
+      canton:
+        cantons.find((canton) => canton.cod_ubicacion === selectedCanton)
+          ?.nombre || "",
+      distrito:
+        districts.find(
+          (district) => district.cod_ubicacion === selectedDistrict,
+        )?.nombre || "",
+    };
+
+    try {
       const response = await axios.post("http://10.0.2.2:8000/api/register/", {
         first_name: firstName,
         last_name: lastName,
-        username: username,
-        email: email,
-        password: password,
-        role: role,
+        username,
+        email,
+        password,
+        role,
         favorite_color: favoriteColor,
         pets_name: petsName,
+        ubicacion_json: ubicacionJson,
       });
 
       if (response.status === 200 || response.status === 201) {
         Alert.alert("Registro exitoso", "Usuario registrado correctamente.");
+        setVerificationModalVisible(false);
         router.push("/");
       }
     } catch (error) {
-      // Verifica si el error tiene una respuesta y si tiene un mensaje específico desde el backend
-      if (error.response) {
-        const errorData = error.response.data;
-        if (errorData.errors) {
-          // Errores de validación de contraseña o similares
-          Alert.alert("Error de validación", errorData.errors.join("\n"));
-        } else if (errorData.email || errorData.username) {
-          // Errores de email o username (si ya existe)
-          const messages = [];
-          if (errorData.email)
-            messages.push(`Correo: ${errorData.email.join("\n")}`);
-          if (errorData.username)
-            messages.push(
-              `Nombre de usuario: ${errorData.username.join("\n")}`,
-            );
-          Alert.alert("Error de registro", messages.join("\n"));
-        } else {
-          // Otros errores
-          Alert.alert(
-            "Error",
-            "Hubo un problema al registrar el usuario. Por favor intenta de nuevo.",
-          );
-        }
-      } else {
-        // Error sin respuesta del servidor (error de red, por ejemplo)
-        Alert.alert(
-          "Error de conexión",
-          "No se pudo conectar con el servidor. Verifica tu conexión.",
-        );
-      }
+      Alert.alert(
+        "Error",
+        "Hubo un problema al completar el registro. Intenta nuevamente.",
+      );
     }
+  };
+
+  const handleCancelVerification = () => {
+    setVerificationModalVisible(false); // Oculta el modal
+    setVerificationCode(""); // Limpia el código de verificación ingresado
   };
 
   return (
@@ -101,59 +229,135 @@ export function Register() {
         <TextInputComponent
           placeholder="Primer Nombre"
           value={firstName}
-          onChangeText={(text) => setFirstName(text)}
+          onChangeText={setFirstName}
         />
         <TextInputComponent
           placeholder="Apellidos"
           value={lastName}
-          onChangeText={(text) => setLastName(text)}
+          onChangeText={setLastName}
         />
         <TextInputComponent
           placeholder="Nombre de usuario"
           value={username}
-          onChangeText={(text) => setUsername(text)}
+          onChangeText={setUsername}
         />
         <TextInputComponent
           placeholder="Correo Electrónico"
           value={email}
-          onChangeText={(text) => setEmail(text)}
+          onChangeText={setEmail}
         />
-
         <TextInputComponent
           placeholder="Color Favorito"
           value={favoriteColor}
-          onChangeText={(text) => setFavoriteColor(text)}
+          onChangeText={setFavoriteColor}
         />
         <TextInputComponent
           placeholder="Nombre de Mascota"
           value={petsName}
-          onChangeText={(text) => setPetsName(text)}
+          onChangeText={setPetsName}
         />
-
         <TextInputComponent
           placeholder="Crear Contraseña"
-          secureTextEntry={true}
+          secureTextEntry
           value={password}
-          onChangeText={(text) => setPassword(text)}
+          onChangeText={setPassword}
         />
         <TextInputComponent
           placeholder="Confirmar Contraseña"
-          secureTextEntry={true}
+          secureTextEntry
           value={confirmPassword}
-          onChangeText={(text) => setConfirmPassword(text)}
+          onChangeText={setConfirmPassword}
         />
-
         <PasswordPolicy password={password} />
 
-        <View style={styles.roleInputContainer}>
-          <Text style={styles.roleLabel}>Rol</Text>
+        {/* Picker de Roles */}
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Seleccione un Rol</Text>
           <Picker
             selectedValue={role}
-            style={styles.picker}
             onValueChange={(itemValue) => setRole(itemValue)}
+            style={styles.picker}
           >
-            {roles.map((rol) => (
-              <Picker.Item key={rol} label={rol} value={rol} />
+            <Picker.Item label="Seleccione un Rol" value="" />
+            {roles.map((roleOption) => (
+              <Picker.Item
+                key={roleOption}
+                label={roleOption}
+                value={roleOption}
+              />
+            ))}
+          </Picker>
+        </View>
+
+        {/* Pickers de Ubicación */}
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Seleccione País</Text>
+          <Picker
+            selectedValue={selectedCountry}
+            onValueChange={(itemValue) => setSelectedCountry(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Seleccione País" value="" />
+            {countries.map((country) => (
+              <Picker.Item
+                key={country.cod_ubicacion}
+                label={country.nombre}
+                value={country.cod_ubicacion}
+              />
+            ))}
+          </Picker>
+        </View>
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Seleccione Provincia</Text>
+          <Picker
+            selectedValue={selectedProvince}
+            onValueChange={(itemValue) => setSelectedProvince(itemValue)}
+            style={styles.picker}
+            enabled={!!selectedCountry}
+          >
+            <Picker.Item label="Seleccione Provincia" value="" />
+            {provinces.map((province) => (
+              <Picker.Item
+                key={province.cod_ubicacion}
+                label={province.nombre}
+                value={province.cod_ubicacion}
+              />
+            ))}
+          </Picker>
+        </View>
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Seleccione Cantón</Text>
+          <Picker
+            selectedValue={selectedCanton}
+            onValueChange={(itemValue) => setSelectedCanton(itemValue)}
+            style={styles.picker}
+            enabled={!!selectedProvince}
+          >
+            <Picker.Item label="Seleccione Cantón" value="" />
+            {cantons.map((canton) => (
+              <Picker.Item
+                key={canton.cod_ubicacion}
+                label={canton.nombre}
+                value={canton.cod_ubicacion}
+              />
+            ))}
+          </Picker>
+        </View>
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Seleccione Distrito</Text>
+          <Picker
+            selectedValue={selectedDistrict}
+            onValueChange={(itemValue) => setSelectedDistrict(itemValue)}
+            style={styles.picker}
+            enabled={!!selectedCanton}
+          >
+            <Picker.Item label="Seleccione Distrito" value="" />
+            {districts.map((district) => (
+              <Picker.Item
+                key={district.cod_ubicacion}
+                label={district.nombre}
+                value={district.cod_ubicacion}
+              />
             ))}
           </Picker>
         </View>
@@ -170,39 +374,52 @@ export function Register() {
         <Pressable style={styles.registerButton} onPress={handleRegister}>
           <Text style={styles.registerButtonText}>Registrarse</Text>
         </Pressable>
+
+        <Modal
+          visible={verificationModalVisible}
+          animationType="slide"
+          transparent
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Verificación de Correo</Text>
+              <TextInput
+                placeholder="Código de Verificación"
+                style={styles.input}
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                keyboardType="numeric"
+              />
+              <Pressable style={styles.verifyButton} onPress={handleVerifyCode}>
+                <Text style={styles.verifyButtonText}>Verificar Código</Text>
+              </Pressable>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={handleCancelVerification}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeAreaView: {
-    flex: 1,
-    backgroundColor: "white",
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
+  safeAreaView: { flex: 1, backgroundColor: "white", padding: 16 },
+  title: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
+  subtitle: { fontSize: 16, color: "gray", marginBottom: 24 },
+  pickerContainer: {
     marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "gray",
-    marginBottom: 24,
-  },
-  roleInputContainer: {
-    width: "100%",
-    marginBottom: 16,
-    borderColor: "#D1D5DB",
-    borderWidth: 1,
+    padding: 10,
+    backgroundColor: "#f1f1f1",
     borderRadius: 8,
-    padding: 12,
-    backgroundColor: "#F3F4F6",
   },
-  roleLabel: {
-    color: "gray",
+  pickerLabel: {
     fontSize: 14,
+    color: "gray",
     marginBottom: 4,
   },
   picker: {
@@ -215,25 +432,57 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
   },
-  termsText: {
-    marginLeft: 8,
-    color: "gray",
-  },
-  linkText: {
-    color: "#38A169",
-  },
+  termsText: { marginLeft: 8, color: "gray" },
+  linkText: { color: "#38A169" },
   registerButton: {
     backgroundColor: "#38A169",
     padding: 16,
     borderRadius: 8,
     marginTop: 24,
     alignItems: "center",
+    alignSelf: "center",
+    width: "100%",
   },
-  registerButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
+  registerButtonText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 8,
+    width: "80%",
+    alignItems: "center",
+  },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
+  input: {
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    width: "100%",
+    padding: 10,
+    marginBottom: 16,
+  },
+  verifyButton: {
+    backgroundColor: "#38A169",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 10,
+  },
+  verifyButtonText: { color: "white", fontWeight: "bold" },
+  cancelButton: {
+    backgroundColor: "#ccc",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    width: "100%",
+  },
+  cancelButtonText: { color: "black", fontWeight: "bold" },
 });
 
 export default Register;

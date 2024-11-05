@@ -15,7 +15,7 @@ const TextInputComponent = ({
       <TextInput
         style={styles.textInput}
         placeholder={placeholder}
-        secureTextEntry={secureTextEntry && !isPasswordVisible}
+        secureTextEntry={!!secureTextEntry && !isPasswordVisible} // Asegura que sea booleano
         placeholderTextColor="#808080"
         value={value}
         onChangeText={onChangeText}
