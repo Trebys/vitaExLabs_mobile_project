@@ -1,12 +1,21 @@
-from .models import AuditoriaUsuario
-from django.core.cache import cache
-from .utils import encrypt_data, decrypt_data
-from rest_framework import viewsets
-from .models import Usuario, EstudioPDF, EstudioApi, ArchivoResultados, VisualizacionDatos, DatosEstandarizados, AuditoriaUsuario, Ubicacion
-from rest_framework.authtoken.serializers import AuthTokenSerializer
-from django.utils import timezone
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
+from django.conf import settings
+import paypalrestsdk
+import matplotlib.pyplot as plt  # Agrega esta línea para usar plt
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.authtoken.views import ObtainAuthToken
+from datetime import timedelta
+import traceback
+import pandas as pd  # Librería para procesar CSV/Excel
+from django.core.files.storage import default_storage
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import IsAuthenticated
 from .serializers import (
     UsuarioSerializer,
     EstudioPDFSerializer,
@@ -15,33 +24,24 @@ from .serializers import (
     VisualizacionDatosSerializer,
     UbicacionSerializer,
 )
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.authtoken.models import Token
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from django.core.files.storage import default_storage
-import pandas as pd  # Librería para procesar CSV/Excel
-import traceback
-from datetime import timedelta
-from rest_framework.authtoken.views import ObtainAuthToken
-from django.http import JsonResponse
-from django.utils.crypto import get_random_string
-from django.core.mail import send_mail
-from datetime import timedelta
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
+from rest_framework.authtoken.serializers import AuthTokenSerializer
+from .models import Usuario, EstudioPDF, EstudioApi, ArchivoResultados, VisualizacionDatos, DatosEstandarizados, AuditoriaUsuario, Ubicacion
+from rest_framework import viewsets
+from .utils import encrypt_data, decrypt_data
+from django.core.cache import cache
+import json
+import io
+from django.core.files.base import ContentFile
+import matplotlib
+# Utiliza un backend sin GUI para evitar problemas de hilos
+matplotlib.use('Agg')
+
+
 # Apis más personalizadas
 
-
-from django.core.mail import send_mail
-from django.utils.crypto import get_random_string
-from django.core.cache import cache
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from django.utils import timezone
-from datetime import timedelta
-import traceback
 
 # Define la función send_verification_code aquí
 
@@ -88,83 +88,10 @@ def send_verification_code(user=None, email=None, purpose='login'):
 
     return plain_code  # Retorna el código generado para que pueda ser almacenado en caché
 
-# Define el endpoint email_and_code_verification aquí
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def email_and_code_verification(request):
-    email = request.data.get('email')
-    code = request.data.get('code')
-
-    # Paso 1: Verificar si el correo ya está en uso
-    if Usuario.objects.filter(email=encrypt_data(email)).exists():
-        return Response(
-            {"error": "El correo ya está registrado. Por favor, ingresa otro correo."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    # Paso 2: Enviar el código de verificación si no se proporciona aún el código
-    if not code:
-        try:
-            # Enviar el código de verificación sin guardar el usuario
-            generated_code = send_verification_code(
-                email=email, purpose='verify_email')
-
-            # Almacenar el código en caché
-            cache.set(f'verification_code_{email}', {
-                      'code': generated_code, 'timestamp': timezone.now()}, timeout=600)
-
-            # Registrar en la auditoría
-            AuditoriaUsuario.objects.create(
-                accion="Envío de Código de Verificación",
-                detalles=f"Código de verificación enviado a {email}"
-            )
-
-            return Response(
-                {"message": "Código de verificación enviado al correo. Por favor ingrésalo para continuar."},
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            traceback.print_exc()
-            AuditoriaUsuario.objects.create(
-                accion="Error al Enviar Código de Verificación",
-                detalles=f"Error al enviar código de verificación a {
-                    email}: {e}"
-            )
-            return Response(
-                {"error": "Error al enviar el código de verificación. Intenta de nuevo."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    # Paso 3: Verificar el código de verificación cuando el usuario lo proporciona
-    else:
-        cached_data = cache.get(f'verification_code_{email}')
-        if not cached_data or cached_data['code'] != code:
-            AuditoriaUsuario.objects.create(
-                accion="Error de Verificación de Código",
-                detalles=f"Intento de verificación fallido para {
-                    email} con código {code}"
-            )
-            return Response(
-                {"error": "Código incorrecto o ha expirado"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Registrar en la auditoría
-        AuditoriaUsuario.objects.create(
-            accion="Verificación de Código Exitosa",
-            detalles=f"Código de verificación confirmado para {email}"
-        )
-
-        return Response(
-            {"message": "Código verificado correctamente. Ahora puedes proceder con el registro completo."},
-            status=status.HTTP_200_OK
-        )
-
-
 # Método de inicio de sesión con verificación de expiración de contraseña
 # NOTA: INTENTAR SEPARA LOS METODOS DE LOGUEO Y TOKENS CUANDO SEPA QUE METODO 2FA USAR
+
+
 class CustomObtainAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -414,6 +341,7 @@ def change_password(request):
     return Response({"error": "El correo electrónico no está registrado."}, status=status.HTTP_404_NOT_FOUND)
 
 
+# Define el endpoint email_and_code_verification aquí
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def email_and_code_verification(request):
@@ -421,46 +349,39 @@ def email_and_code_verification(request):
     code = request.data.get('code')
 
     # Paso 1: Verificar si el correo ya está en uso
-    usuarios = Usuario.objects.all()
-    for usuario in usuarios:
-        decrypted_email = usuario.get_decrypted_email()
-        if decrypted_email == email:
-            # Guardar en la auditoría que se intentó usar un correo registrado
-            AuditoriaUsuario.objects.create(
-                accion="Intento de registro con correo ya registrado",
-                detalles=f"Intento de registro con correo ya registrado: {
-                    email}"
-            )
-            return Response(
-                {"error": "El correo ya está registrado. Por favor, ingresa otro correo."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+    if Usuario.objects.filter(email=encrypt_data(email)).exists():
+        return Response(
+            {"error": "El correo ya está registrado. Por favor, ingresa otro correo."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     # Paso 2: Enviar el código de verificación si no se proporciona aún el código
     if not code:
         try:
-            # Enviar el código de verificación y guardarlo en el caché
+            # Enviar el código de verificación sin guardar el usuario
             generated_code = send_verification_code(
                 email=email, purpose='verify_email')
+
+            # Almacenar el código en caché
             cache.set(f'verification_code_{email}', {
                       'code': generated_code, 'timestamp': timezone.now()}, timeout=600)
 
-            # Guardar en la auditoría que el código fue enviado
+            # Registrar en la auditoría
             AuditoriaUsuario.objects.create(
-                accion="Código de verificación enviado",
+                accion="Envío de Código de Verificación",
                 detalles=f"Código de verificación enviado a {email}"
             )
+
             return Response(
                 {"message": "Código de verificación enviado al correo. Por favor ingrésalo para continuar."},
                 status=status.HTTP_200_OK
             )
         except Exception as e:
-            # Log de error y auditoría en caso de falla
             traceback.print_exc()
             AuditoriaUsuario.objects.create(
                 accion="Error al Enviar Código de Verificación",
                 detalles=f"Error al enviar código de verificación a {
-                    email}: {str(e)}"
+                    email}: {e}"
             )
             return Response(
                 {"error": "Error al enviar el código de verificación. Intenta de nuevo."},
@@ -469,49 +390,28 @@ def email_and_code_verification(request):
 
     # Paso 3: Verificar el código de verificación cuando el usuario lo proporciona
     else:
-        try:
-            # Recuperar el código de verificación del caché
-            cached_data = cache.get(f'verification_code_{email}')
-            if not cached_data:
-                return Response(
-                    {"error": "Código no encontrado o expirado."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            cached_code = cached_data['code']
-            timestamp = cached_data['timestamp']
-
-            # Validar el código de verificación
-            if cached_code != code or timezone.now() > timestamp + timedelta(minutes=10):
-                return Response(
-                    {"error": "Código incorrecto o ha expirado"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Guardar en la auditoría que el código fue verificado exitosamente
+        cached_data = cache.get(f'verification_code_{email}')
+        if not cached_data or cached_data['code'] != code:
             AuditoriaUsuario.objects.create(
-                accion="Código de verificación exitoso",
-                detalles=f"Código de verificación para {
-                    email} verificado correctamente."
-            )
-
-            # Si el código es correcto, se permite continuar con el registro
-            return Response(
-                {"message": "Código verificado correctamente. Ahora puedes proceder con el registro completo."},
-                status=status.HTTP_200_OK
-            )
-
-        except Exception as e:
-            # Manejo de errores y registro en la auditoría
-            traceback.print_exc()
-            AuditoriaUsuario.objects.create(
-                accion="Error al verificar código",
-                detalles=f"Error al verificar el código para {email}: {str(e)}"
+                accion="Error de Verificación de Código",
+                detalles=f"Intento de verificación fallido para {
+                    email} con código {code}"
             )
             return Response(
-                {"error": "Error al verificar el código. Intenta de nuevo."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Código incorrecto o ha expirado"},
+                status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Registrar en la auditoría
+        AuditoriaUsuario.objects.create(
+            accion="Verificación de Código Exitosa",
+            detalles=f"Código de verificación confirmado para {email}"
+        )
+
+        return Response(
+            {"message": "Código verificado correctamente. Ahora puedes proceder con el registro completo."},
+            status=status.HTTP_200_OK
+        )
 
 
 @api_view(['POST'])
@@ -600,8 +500,55 @@ def logout_user(request):
 
 
 # Apis de Estudios y Carga de Archivos
+
+# Función para análisis de datos y generación de gráficos
+
+def analyze_and_store_data(data, archivo_resultado):
+    """
+    Realiza el análisis de datos y guarda en la tabla DatosEstandarizados
+    y VisualizacionDatos.
+    """
+    # Resumen estadístico básico
+    summary = data.describe().to_dict()
+
+    # Guardar en DatosEstandarizados
+    datos_estandarizados = DatosEstandarizados.objects.create(
+        archivo=archivo_resultado,
+        encabezados=list(data.columns),
+        contenido=summary
+    )
+
+    # Generar un gráfico (ejemplo: histograma para cada columna numérica)
+    for column in data.select_dtypes(include=['float64', 'int64']).columns:
+        plt.figure()
+        data[column].plot(kind='hist', title=f'Histograma de {column}')
+        plt.xlabel(column)
+        plt.ylabel('Frecuencia')
+
+        # Guardar gráfico en archivo temporal
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+
+        # Almacenar el archivo gráfico en el almacenamiento
+        grafico_path = default_storage.save(
+            f'graficos/{archivo_resultado.estudio.id}_{column}.png',
+            ContentFile(buffer.read())
+        )
+        buffer.close()
+        plt.close()
+
+        # Guardar en VisualizacionDatos
+        VisualizacionDatos.objects.create(
+            resultado=archivo_resultado,
+            tipo_grafico='histograma',
+            configuracion=json.dumps({"column": column, "path": grafico_path})
+        )
+
+# Endpoint `upload_result_file` actualizado
+
+
 @api_view(['POST'])
-# Solo usuarios autenticados pueden cargar archivos
 @permission_classes([IsAuthenticated])
 def upload_result_file(request):
     try:
@@ -611,7 +558,8 @@ def upload_result_file(request):
         estudio_id = request.data.get('estudio_id')
         # Tipo de análisis que se está subiendo
         tipo_analisis = request.data.get('tipo_analisis')
-        archivo = request.FILES.get('archivo')  # Obtener el archivo
+        # Obtener el archivo
+        archivo = request.FILES.get('archivo')
 
         # Validar que el archivo, estudio_id y tipo_analisis se hayan enviado
         if not archivo or not estudio_id or not tipo_analisis:
@@ -625,8 +573,7 @@ def upload_result_file(request):
 
         # Determinar el formato del archivo subido (CSV o Excel)
         extension = archivo.name.split('.')[-1].lower()
-        formatos_permitidos = ['csv', 'xls', 'xlsx']
-        if extension not in formatos_permitidos:
+        if extension not in ['csv', 'xls', 'xlsx']:
             return Response({"error": "Formato de archivo no soportado."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar si ya existe un archivo con el mismo estudio, tipo de análisis y extensión
@@ -658,7 +605,7 @@ def upload_result_file(request):
         # Convertir el contenido del archivo a JSON
         contenido = data.to_dict(orient='records')
 
-        # Crear una entrada en la tabla ArchivoResultados
+        # Crear registro en ArchivoResultados
         archivo_resultado = ArchivoResultados.objects.create(
             estudio=estudio,
             tipo_analisis=tipo_analisis,
@@ -666,15 +613,18 @@ def upload_result_file(request):
             contenido=contenido  # Almacenar el contenido del archivo en formato JSON
         )
 
+        # Realizar análisis y generación de gráficos
+        analyze_and_store_data(data, archivo_resultado)
+
         # Registrar en la auditoría
         AuditoriaUsuario.objects.create(
             usuario=usuario,
-            accion="Carga de archivo de resultados",
+            accion="Carga de archivo de resultados y análisis",
             detalles=f"Archivo {
-                archivo.name} cargado exitosamente para el estudio ID {estudio_id}."
+                archivo.name} cargado y analizado para el estudio ID {estudio_id}."
         )
 
-        return Response({"message": "Archivo cargado y procesado con éxito."}, status=status.HTTP_201_CREATED)
+        return Response({"message": "Archivo cargado, procesado y analizado con éxito."}, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         # Capturar y registrar el error completo en los logs
@@ -734,33 +684,53 @@ def upload_pdf(request):
         traceback.print_exc()  # Muestra el error completo en los logs
         return Response({"error": f"Error al procesar el archivo PDF: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# ENPOINT CHAT QUE FUNCIONA SUPUESTAMENTE PARA CHARTS Y MYRESERCHS
+
 
 @api_view(['GET'])
-# Solo usuarios autenticados pueden obtener los estudios
 @permission_classes([IsAuthenticated])
 def get_studies_with_results(request):
     try:
-        # Obtener el usuario autenticado
         usuario = request.user
-
-        # Obtener todos los estudios subidos por el usuario
         estudios = EstudioPDF.objects.filter(usuario=usuario)
-
-        # Serializar los estudios
         estudios_serializados = []
+
         for estudio in estudios:
             estudio_serializado = EstudioPDFSerializer(estudio).data
 
             # Obtener los resultados asociados a este estudio
             resultados = ArchivoResultados.objects.filter(estudio=estudio)
-            resultados_serializados = ArchivoResultadosSerializer(
-                resultados, many=True).data
+            resultados_serializados = []
 
-            # Añadir los resultados al estudio
+            for resultado in resultados:
+                resultado_data = ArchivoResultadosSerializer(resultado).data
+
+                # Obtener análisis de datos y visualizaciones relacionadas
+                datos_estandarizados = DatosEstandarizados.objects.filter(
+                    archivo=resultado).first()
+                visualizaciones = VisualizacionDatos.objects.filter(
+                    resultado=resultado)
+
+                # Convertir visualizaciones a JSON
+                visualizaciones_data = [
+                    {
+                        "tipo_grafico": visualizacion.tipo_grafico,
+                        "configuracion": json.loads(visualizacion.configuracion),
+                    }
+                    for visualizacion in visualizaciones
+                ]
+
+                # Incluir análisis y gráficos en los resultados
+                resultado_data['datos_estandarizados'] = datos_estandarizados.contenido if datos_estandarizados else {
+                }
+                resultado_data['visualizaciones'] = visualizaciones_data
+                resultados_serializados.append(resultado_data)
+
             estudio_serializado['resultados'] = resultados_serializados
             estudios_serializados.append(estudio_serializado)
 
         return Response(estudios_serializados, status=status.HTTP_200_OK)
+
     except Exception as e:
         return Response({"error": f"Error fetching studies: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -813,8 +783,6 @@ def edit_study(request, pk):
         return Response({"error": "Estudio no encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": f"Error al actualizar el estudio: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # views.py
 
 
 @api_view(['GET'])
@@ -886,3 +854,55 @@ class VisualizacionDatosViewSet(viewsets.ModelViewSet):
     queryset = VisualizacionDatos.objects.all()
     serializer_class = VisualizacionDatosSerializer
     permission_classes = [IsAuthenticated]
+
+
+# Configurar el SDK de PayPal
+paypalrestsdk.configure({
+    "mode": "sandbox",  # Usa "sandbox" para pruebas
+    "client_id": settings.PAYPAL_CLIENT_ID,  # Variable desde settings.py
+    "client_secret": settings.PAYPAL_CLIENT_SECRET  # Variable desde settings.py
+})
+
+
+@csrf_exempt
+def create_payment(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            amount = data.get("amount")
+            if not amount:
+                return JsonResponse({"error": "El monto es obligatorio."}, status=400)
+
+            payment = paypalrestsdk.Payment({
+                "intent": "sale",
+                "payer": {"payment_method": "paypal"},
+                "redirect_urls": {
+                    "return_url": "http://10.0.2.2:8000/api/paypal/execute/",
+                    "cancel_url": "http://10.0.2.2:8000/api/paypal/cancel/",
+                },
+                "transactions": [{
+                    "amount": {"total": f"{float(amount):.2f}", "currency": "USD"},
+                    "description": "Pago dinámico desde la app"
+                }]
+            })
+
+            if payment.create():
+                approval_url = next(
+                    link.href for link in payment.links if link.rel == "approval_url")
+                return JsonResponse({"approval_url": approval_url})
+            else:
+                return JsonResponse({"error": "Error creando el pago"}, status=500)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def execute_payment(request):
+    payment_id = request.GET.get("paymentId")
+    payer_id = request.GET.get("PayerID")
+    payment = paypalrestsdk.Payment.find(payment_id)
+
+    if payment.execute({"payer_id": payer_id}):
+        return JsonResponse({"status": "success"})
+    else:
+        return JsonResponse({"status": "failure", "error": payment.error})

@@ -7,21 +7,42 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export function MyData() {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [universityData, setUniversityData] = useState(null);
 
   // Función para obtener los datos del usuario desde el backend
   const fetchUserData = async () => {
     try {
-      const token = await AsyncStorage.getItem("token"); // Obtener el token almacenado
+      const token = await AsyncStorage.getItem("token");
       const response = await axios.get("http://10.0.2.2:8000/api/user/", {
         headers: {
-          Authorization: `Token ${token}`, // Enviar el token para la autenticación
+          Authorization: `Token ${token}`,
         },
       });
-      setUserData(response.data); // Guardar los datos del usuario
-      setLoading(false); // Desactivar el indicador de carga
+      setUserData(response.data);
+      fetchUniversityData(response.data.email); // Llama a la función con el correo del usuario
+      setLoading(false);
     } catch (error) {
       console.error("Error al obtener los datos del usuario", error);
-      setLoading(false); // Desactivar el indicador de carga en caso de error
+      setLoading(false);
+    }
+  };
+
+  const fetchUniversityData = async (email) => {
+    try {
+      const response = await axios.get(
+        "http://10.0.2.2:8000/api/universidad_x/consultar_estudiante/",
+        {
+          params: { correo: email },
+        },
+      );
+      if (response.status === 200) {
+        setUniversityData(response.data);
+      } else {
+        setUniversityData(null);
+      }
+    } catch (error) {
+      console.error("Error al obtener los datos universitarios", error);
+      setUniversityData(null);
     }
   };
 
@@ -59,7 +80,38 @@ export function MyData() {
             <Text style={styles.label}>Rol:</Text>
             <Text style={styles.value}>{userData.role}</Text>
           </View>
-          {/* Agregar otros datos relevantes */}
+
+          {/* Datos Universitarios */}
+          <View style={styles.separator} />
+          {universityData ? (
+            <View>
+              <Text style={styles.headerText}>Datos Universitarios</Text>
+              <View style={styles.dataRow}>
+                <Text style={styles.label}>Nombre:</Text>
+                <Text style={styles.value}>{universityData.nombre}</Text>
+              </View>
+              <View style={styles.dataRow}>
+                <Text style={styles.label}>Carrera:</Text>
+                <Text style={styles.value}>{universityData.carrera}</Text>
+              </View>
+              <View style={styles.dataRow}>
+                <Text style={styles.label}>Nivel Académico:</Text>
+                <Text style={styles.value}>
+                  {universityData.nivel_academico}
+                </Text>
+              </View>
+              <View style={styles.dataRow}>
+                <Text style={styles.label}>Fecha de Graduación:</Text>
+                <Text style={styles.value}>
+                  {universityData.fecha_graduacion}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.noUniversityDataText}>
+              Este usuario no está inscrito en la universidad X.
+            </Text>
+          )}
         </View>
       ) : (
         <Text style={styles.errorText}>No se pudieron obtener los datos.</Text>
@@ -82,6 +134,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    marginBottom: 20, // Añade un margen inferior para separar más los contenedores
   },
   headerText: {
     fontSize: 22,
@@ -106,6 +159,16 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: "red",
+    textAlign: "center",
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#E0E0E0",
+    marginVertical: 20, // Incrementa el margen para mayor separación
+  },
+  noUniversityDataText: {
+    color: "red",
+    marginTop: 10,
     textAlign: "center",
   },
 });

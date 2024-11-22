@@ -16,6 +16,10 @@ export default function Layout() {
     "/my_data_page": "Mis datos",
     "/my_researchs_page": "Mis estudios",
     "/change_password_page": "Cambiar contraseña",
+    "/payment_gateway_page": "Pasarela de pago",
+    "/premium_user_plan_page": "",
+    "/ministry_of_health_data_page": "Datos Ministerio de Salud",
+    "/news_aging_page": "Noticias de Envejecimiento",
   };
 
   // Rutas principales donde NO debería aparecer la flecha de retroceso
@@ -31,7 +35,13 @@ export default function Layout() {
   ];
 
   // Rutas donde NO debe aparecer el TabBar (Login y Registro)
-  const noTabBarRoutes = ["/", "/register_page", "/change_password_page"];
+  const noTabBarRoutes = [
+    "/",
+    "/register_page",
+    "/change_password_page",
+    "/payment_gateway_page",
+    "/premium_user_plan_page",
+  ];
 
   const isMainRoute = mainRoutes.includes(path);
   const hideTabBar = noTabBarRoutes.includes(path);

@@ -24,6 +24,8 @@ from .views import (
     get_cantones,
     get_distritos,
     email_and_code_verification,
+    create_payment,
+    execute_payment
 
 )
 
@@ -71,6 +73,8 @@ urlpatterns = [
     path('edit-study/<int:pk>/', edit_study,
          name='edit-study'),  # Editar estudio
     # Incluye los viewsets registrados en el router
+    path('paypal/payment/', create_payment, name='create_payment'),
+    path('paypal/execute/', execute_payment, name='execute_payment'),
     path('', include(router.urls)),
 
 ]

@@ -33,7 +33,10 @@ export function TabBar() {
         <UserIcon
           size={28}
           style={
-            activeTab === "/user_page" || activeTab === "/my_data_page"
+            activeTab === "/user_page" ||
+            activeTab === "/my_data_page" ||
+            activeTab === "/ministry_of_health_data_page" ||
+            activeTab === "/news_aging_page" // Aseguramos que esté verde en todas las páginas
               ? styles.activeIcon
               : styles.icon
           }

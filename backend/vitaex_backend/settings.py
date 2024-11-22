@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import environ
 from pathlib import Path
 import os
 from cryptography.fernet import Fernet
@@ -47,7 +48,12 @@ INSTALLED_APPS = [
     'django_otp',
     'django_otp.plugins.otp_totp',
     'two_factor',
-    # 'two_factor.plugins.phonenumber',  # opcional si deseas soporte para SMS
+    # Apps del proyecto
+    'banco_x_app',
+    'noticiero_x_app',
+    'tse_app',
+    'universidad_x_app',
+    'ministerio_salud_app',
 ]
 
 MIDDLEWARE = [
@@ -63,6 +69,17 @@ MIDDLEWARE = [
 ]
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.0.2.2', '*']
+
+
+# Inicializa django-environ
+env = environ.Env()
+
+# Lee el archivo .env
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
+# Variables de PayPal
+PAYPAL_CLIENT_ID = env("PAYPAL_CLIENT_ID")
+PAYPAL_CLIENT_SECRET = env("PAYPAL_CLIENT_SECRET")
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -107,17 +124,69 @@ WSGI_APPLICATION = 'vitaex_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# settings.py
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vitaex_db',         # Nombre de la base de datos que creaste
+        'NAME': 'vitaex_db',         # Nombre de la base de datos principal
         'USER': 'postgres',
         'PASSWORD': 'TrebysPost20',  # Contraseña del usuario
-        # Servidor de base de datos (localhost para desarrollo)
         'HOST': 'localhost',
-        'PORT': '5432',               # Puerto predeterminado de PostgreSQL
-    }
+        'PORT': '5432',
+    },
+    'banco_x': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'banco_x',
+        'USER': 'postgres',
+        'PASSWORD': 'TrebysPost20',  # Ajusta según tus credenciales
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'noticiero_x': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'noticiero_x',
+        'USER': 'postgres',
+        'PASSWORD': 'TrebysPost20',  # Ajusta según tus credenciales
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'tse': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'tse',
+        'USER': 'postgres',
+        'PASSWORD': 'TrebysPost20',  # Ajusta según tus credenciales
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'universidad_x': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'universidad_x',
+        'USER': 'postgres',
+        'PASSWORD': 'TrebysPost20',  # Ajusta según tus credenciales
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'ministerio_salud': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ministerio_salud',
+        'USER': 'postgres',
+        'PASSWORD': 'TrebysPost20',  # Ajusta según tus credenciales
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
 }
+
+#
+
+DATABASE_ROUTERS = [
+    'vitaex_backend.database_router.BancoXRouter',
+    'vitaex_backend.database_router.NoticieroXRouter',
+    'vitaex_backend.database_router.TSERouter',
+    'vitaex_backend.database_router.UniversidadXRouter',
+    'vitaex_backend.database_router.MinisterioSaludRouter',
+]
+
 
 AUTH_USER_MODEL = 'core.Usuario'
 

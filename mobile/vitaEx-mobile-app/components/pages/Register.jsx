@@ -112,6 +112,31 @@ export function Register() {
     fetchDistricts();
   }, [selectedCanton]);
 
+  const handleTSEConsultation = async () => {
+    if (email) {
+      try {
+        const response = await axios.get(
+          `http://10.0.2.2:8000/api/tse/obtencion_datos_tse/`,
+          { params: { email } },
+        );
+        if (response.status === 200) {
+          setFirstName(response.data.nombre);
+          setLastName(response.data.apellidos);
+        } else {
+          Alert.alert(
+            "No encontrado",
+            "No se encontró un usuario con ese correo.",
+          );
+        }
+      } catch (error) {
+        console.error("Error al buscar correo en la base de datos:", error);
+        Alert.alert("Error", "Hubo un problema al consultar los datos.");
+      }
+    } else {
+      Alert.alert("Error", "Por favor ingresa un correo electrónico.");
+    }
+  };
+
   const handleRegister = async () => {
     if (!isSelected) {
       Alert.alert("Error", "Debes aceptar los Términos y Condiciones.");
@@ -246,6 +271,10 @@ export function Register() {
           value={email}
           onChangeText={setEmail}
         />
+        <Pressable style={styles.tseButton} onPress={handleTSEConsultation}>
+          <Text style={styles.tseButtonText}>Consultar TSE</Text>
+        </Pressable>
+
         <TextInputComponent
           placeholder="Color Favorito"
           value={favoriteColor}
@@ -284,79 +313,6 @@ export function Register() {
                 key={roleOption}
                 label={roleOption}
                 value={roleOption}
-              />
-            ))}
-          </Picker>
-        </View>
-
-        {/* Pickers de Ubicación */}
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Seleccione País</Text>
-          <Picker
-            selectedValue={selectedCountry}
-            onValueChange={(itemValue) => setSelectedCountry(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Seleccione País" value="" />
-            {countries.map((country) => (
-              <Picker.Item
-                key={country.cod_ubicacion}
-                label={country.nombre}
-                value={country.cod_ubicacion}
-              />
-            ))}
-          </Picker>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Seleccione Provincia</Text>
-          <Picker
-            selectedValue={selectedProvince}
-            onValueChange={(itemValue) => setSelectedProvince(itemValue)}
-            style={styles.picker}
-            enabled={!!selectedCountry}
-          >
-            <Picker.Item label="Seleccione Provincia" value="" />
-            {provinces.map((province) => (
-              <Picker.Item
-                key={province.cod_ubicacion}
-                label={province.nombre}
-                value={province.cod_ubicacion}
-              />
-            ))}
-          </Picker>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Seleccione Cantón</Text>
-          <Picker
-            selectedValue={selectedCanton}
-            onValueChange={(itemValue) => setSelectedCanton(itemValue)}
-            style={styles.picker}
-            enabled={!!selectedProvince}
-          >
-            <Picker.Item label="Seleccione Cantón" value="" />
-            {cantons.map((canton) => (
-              <Picker.Item
-                key={canton.cod_ubicacion}
-                label={canton.nombre}
-                value={canton.cod_ubicacion}
-              />
-            ))}
-          </Picker>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Seleccione Distrito</Text>
-          <Picker
-            selectedValue={selectedDistrict}
-            onValueChange={(itemValue) => setSelectedDistrict(itemValue)}
-            style={styles.picker}
-            enabled={!!selectedCanton}
-          >
-            <Picker.Item label="Seleccione Distrito" value="" />
-            {districts.map((district) => (
-              <Picker.Item
-                key={district.cod_ubicacion}
-                label={district.nombre}
-                value={district.cod_ubicacion}
               />
             ))}
           </Picker>
@@ -425,6 +381,17 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: "100%",
+  },
+  tseButton: {
+    backgroundColor: "#38A169",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  tseButtonText: {
+    color: "white",
+    fontWeight: "bold",
   },
   switchContainer: {
     flexDirection: "row",

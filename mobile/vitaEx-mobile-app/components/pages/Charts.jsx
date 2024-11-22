@@ -1,87 +1,220 @@
-import React, { useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, Image, StyleSheet, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CheckIcon } from "../Icons"; // Usamos los íconos personalizados
 import { Picker } from "@react-native-picker/picker";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export function Charts() {
-  const [selectedStudy1, setSelectedStudy1] = useState("Estudio 1");
-  const [selectedStudy2, setSelectedStudy2] = useState("Estudio 2");
+  const [studies, setStudies] = useState([]);
+  const [selectedStudy1, setSelectedStudy1] = useState(null);
+  const [selectedResult1, setSelectedResult1] = useState(null);
+  const [selectedStudy2, setSelectedStudy2] = useState(null);
+  const [selectedResult2, setSelectedResult2] = useState(null);
+  const [chartData1, setChartData1] = useState(null);
+  const [chartData2, setChartData2] = useState(null);
+  const [authToken, setAuthToken] = useState(null);
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        setAuthToken(token);
+      }
+    };
+    fetchToken();
+  }, []);
+
+  useEffect(() => {
+    if (authToken) {
+      fetchStudiesData();
+    }
+  }, [authToken]);
+
+  const fetchStudiesData = async () => {
+    if (!authToken) return;
+    try {
+      const response = await axios.get(
+        "http://10.0.2.2:8000/api/get-studies-with-results/",
+        {
+          headers: {
+            Authorization: `Token ${authToken}`,
+          },
+        },
+      );
+      setStudies(response.data);
+    } catch (error) {
+      console.error("Error fetching studies data", error);
+      Alert.alert("Error", "Hubo un problema al obtener los estudios.");
+    }
+  };
+
+  const handleStudySelect = (
+    study,
+    setStudy,
+    setSelectedResult,
+    setChartData,
+  ) => {
+    setStudy(study);
+    setSelectedResult(null);
+    setChartData(null);
+  };
+
+  const handleResultSelect = (result, setSelectedResult, setChartData) => {
+    setSelectedResult(result);
+    setChartData(result?.visualizaciones || []);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Envuelve todo el contenido en ScrollView para permitir desplazamiento */}
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.title}>Análisis de resultados</Text>
 
-        {/* Inputs de selección de estudios con Picker */}
+        {/* Selectores de estudios y resultados para el primer gráfico */}
         <View style={styles.inputContainer}>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedStudy1}
               style={styles.picker}
-              onValueChange={(itemValue) => setSelectedStudy1(itemValue)}
+              onValueChange={(study) =>
+                handleStudySelect(
+                  study,
+                  setSelectedStudy1,
+                  setSelectedResult1,
+                  setChartData1,
+                )
+              }
             >
-              <Picker.Item label="Estudio 1" value="Estudio 1" />
-              <Picker.Item label="Estudio A" value="Estudio A" />
-              <Picker.Item label="Estudio B" value="Estudio B" />
+              <Picker.Item label="Seleccione un estudio" value={null} />
+              {studies.map((study) => (
+                <Picker.Item
+                  key={study.id}
+                  label={study.nombre_archivo}
+                  value={study}
+                />
+              ))}
             </Picker>
           </View>
+
+          {selectedStudy1 && (
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={selectedResult1}
+                style={styles.picker}
+                onValueChange={(result) =>
+                  handleResultSelect(result, setSelectedResult1, setChartData1)
+                }
+              >
+                <Picker.Item
+                  label="Seleccione un archivo de resultados"
+                  value={null}
+                />
+                {selectedStudy1.resultados.map((result) => (
+                  <Picker.Item
+                    key={result.id}
+                    label={result.tipo_analisis}
+                    value={result}
+                  />
+                ))}
+              </Picker>
+            </View>
+          )}
+        </View>
+
+        {/* Gráfico y Análisis del Estudio 1 */}
+        {chartData1 && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>
+              {selectedResult1 ? selectedResult1.tipo_analisis : "Gráfico 1"}
+            </Text>
+            {chartData1.map((visual) => (
+              <Image
+                key={visual.configuracion.path}
+                source={{
+                  uri: `http://10.0.2.2:8000/media/${visual.configuracion.path}`,
+                }}
+                style={styles.chartImage}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Selectores de estudios y resultados para el segundo gráfico */}
+        <View style={styles.inputContainer}>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedStudy2}
               style={styles.picker}
-              onValueChange={(itemValue) => setSelectedStudy2(itemValue)}
+              onValueChange={(study) =>
+                handleStudySelect(
+                  study,
+                  setSelectedStudy2,
+                  setSelectedResult2,
+                  setChartData2,
+                )
+              }
             >
-              <Picker.Item label="Estudio 2" value="Estudio 2" />
-              <Picker.Item label="Estudio C" value="Estudio C" />
-              <Picker.Item label="Estudio D" value="Estudio D" />
+              <Picker.Item label="Seleccione un estudio" value={null} />
+              {studies.map((study) => (
+                <Picker.Item
+                  key={study.id}
+                  label={study.nombre_archivo}
+                  value={study}
+                />
+              ))}
             </Picker>
           </View>
+
+          {selectedStudy2 && (
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={selectedResult2}
+                style={styles.picker}
+                onValueChange={(result) =>
+                  handleResultSelect(result, setSelectedResult2, setChartData2)
+                }
+              >
+                <Picker.Item
+                  label="Seleccione un archivo de resultados"
+                  value={null}
+                />
+                {selectedStudy2.resultados.map((result) => (
+                  <Picker.Item
+                    key={result.id}
+                    label={result.tipo_analisis}
+                    value={result}
+                  />
+                ))}
+              </Picker>
+            </View>
+          )}
         </View>
 
-        {/* Botones de filtro */}
-        <View style={styles.actionContainer}>
-          <Pressable style={styles.filterButton}>
-            <CheckIcon size={20} color="green" />
-            <Text style={styles.actionText}>Filtrar</Text>
-          </Pressable>
-        </View>
-
-        {/* Gráfico 1 */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>{selectedStudy1}</Text>
-          <View style={styles.chartPlaceholder}>
-            <Text style={styles.placeholderText}>Gráfico Placeholder</Text>
+        {/* Gráfico y Análisis del Estudio 2 */}
+        {chartData2 && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>
+              {selectedResult2 ? selectedResult2.tipo_analisis : "Gráfico 2"}
+            </Text>
+            {chartData2.map((visual) => (
+              <Image
+                key={visual.configuracion.path}
+                source={{
+                  uri: `http://10.0.2.2:8000/media/${visual.configuracion.path}`,
+                }}
+                style={styles.chartImage}
+              />
+            ))}
           </View>
-        </View>
-
-        {/* Gráfico 2 */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>{selectedStudy2}</Text>
-          <View style={styles.chartPlaceholder}>
-            <Text style={styles.placeholderText}>Gráfico Placeholder</Text>
-          </View>
-        </View>
-
-        {/* Botón de análisis */}
-        <Pressable style={styles.analyzeButton}>
-          <Text style={styles.analyzeButtonText}>Analizar</Text>
-        </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  scrollContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  scrollContainer: { padding: 16, backgroundColor: "#fff" },
   title: {
     fontSize: 20,
     fontWeight: "bold",
@@ -99,58 +232,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 8,
   },
-  picker: {
-    height: 50,
-    color: "black",
-  },
-  actionContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingHorizontal: 16,
-  },
-  filterButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f2f2f2",
-    padding: 10,
-    borderRadius: 8,
-  },
-  actionText: {
-    marginLeft: 8,
-    fontSize: 16,
-  },
-  chartContainer: {
-    marginBottom: 16,
-  },
+  picker: { height: 50, color: "black" },
+  chartContainer: { marginBottom: 16 },
   chartTitle: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "center",
   },
-  chartPlaceholder: {
-    height: 200,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeholderText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  analyzeButton: {
-    backgroundColor: "#38A169",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  analyzeButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  chartImage: { height: 200, resizeMode: "contain", marginBottom: 10 },
 });
+
+export default Charts;
