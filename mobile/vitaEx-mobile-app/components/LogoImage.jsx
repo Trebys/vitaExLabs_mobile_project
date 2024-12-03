@@ -1,14 +1,31 @@
-import React from "react";
-import { View, Image, StyleSheet, Platform } from "react-native";
+import React, { useRef, useEffect } from "react";
+import { View, Image, StyleSheet, Animated, Platform } from "react-native";
 
-// Importa las imágenes locales
 const labImage = require("../assets/womes_background.jpg");
 const vitaexLogo = require("../assets/vitaex_logo.jpeg");
 
 export function LogoImage() {
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: 1.1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, []);
+
   return (
     <View style={styles.container}>
-      {/* Imagen de fondo */}
       <Image
         source={labImage}
         style={[
@@ -17,11 +34,11 @@ export function LogoImage() {
         ]}
         resizeMode="cover"
       />
-      {/* Contenedor del logo */}
-      <View
+      <Animated.View
         style={[
           styles.logoContainer,
           Platform.OS === "web" && styles.logoContainerWeb,
+          { transform: [{ scale: bounceAnim }] },
         ]}
       >
         <Image
@@ -32,7 +49,7 @@ export function LogoImage() {
           ]}
           resizeMode="contain"
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -46,17 +63,17 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   backgroundImage: {
-    width: "95%", // Ocupa todo el ancho disponible en móviles
+    width: "95%",
     height: "80%",
     marginBottom: "12%",
   },
   backgroundImageWeb: {
-    height: "60%", // En la web, ajustamos el tamaño de la imagen
-    marginBottom: "5%", // Menos margen inferior en pantallas grandes
+    height: "60%",
+    marginBottom: "5%",
   },
   logoContainer: {
     position: "absolute",
-    top: "70%", // Ajuste en móviles
+    top: "70%",
     backgroundColor: "white",
     borderRadius: 16,
     padding: 8,
@@ -67,14 +84,14 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   logoContainerWeb: {
-    top: "60%", // Ajuste para que el logo esté más centrado en la web
+    top: "60%",
   },
   logoImage: {
-    width: 100, // Ajuste para pantallas pequeñas (móviles)
+    width: 100,
     height: 100,
   },
   logoImageWeb: {
-    width: 120, // Logo más grande en la web
+    width: 120,
     height: 120,
   },
 });

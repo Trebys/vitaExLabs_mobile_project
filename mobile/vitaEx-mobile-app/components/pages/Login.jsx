@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Pressable,
   Text,
@@ -7,14 +7,15 @@ import {
   StyleSheet,
   Image,
   Platform,
-  Alert,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import TextInputComponent from "../TextInputComponent";
+import NotificationModal from "../NotificationModal";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import OnboardingScreen from "./OnboardingScreen";
 const labImage = require("../../assets/womes_background.jpg");
 const vitaexLogo = require("../../assets/vitaex_logo.jpeg");
 
@@ -23,19 +24,105 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false); // Estado para el indicador de carga
+  const [loading, setLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(null); // Estado para controlar el onboarding
+  const [notification, setNotification] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "success", // success, error, warning
+    onConfirm: () => {},
+  });
+
   const router = useRouter();
 
+  // Animations
+  const logoScale = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const forgotPasswordOpacity = useRef(new Animated.Value(0)).current;
+  const forgotPasswordTranslateY = useRef(new Animated.Value(0)).current;
+  const registerOpacity = useRef(new Animated.Value(0)).current;
+  const registerTranslateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Verificar si el usuario ya vio el onboarding
+    const checkOnboardingStatus = async () => {
+      try {
+        const hasSeenOnboarding =
+          await AsyncStorage.getItem("hasSeenOnboarding");
+        //await AsyncStorage.clear(); //Quitar esta linea para que funcione correctamente el onboarding
+        if (hasSeenOnboarding === null) {
+          setShowOnboarding(true);
+        } else {
+          setShowOnboarding(false);
+        }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+        setShowOnboarding(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, []);
+
+  useEffect(() => {
+    // Iniciar las animaciones solo si no se muestra el onboarding
+    if (showOnboarding === false) {
+      Animated.sequence([
+        Animated.timing(logoScale, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(forgotPasswordOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(forgotPasswordTranslateY, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(registerOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(registerTranslateY, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showOnboarding]);
+  const handleOnboardingFinish = async () => {
+    try {
+      await AsyncStorage.setItem("hasSeenOnboarding", "true");
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error("Error setting onboarding status:", error);
+    }
+  };
   const handleLogin = async () => {
     if (!username || !password) {
-      Alert.alert(
-        "Error",
-        "Por favor, ingresa un nombre de usuario y una contraseña.",
-      );
+      setNotification({
+        visible: true,
+        title: "Error",
+        message: "Por favor, ingresa un nombre de usuario y una contraseña.",
+        type: "error",
+        onConfirm: () => setNotification({ ...notification, visible: false }),
+      });
       return;
     }
 
-    setLoading(true); // Mostrar indicador de carga
+    setLoading(true);
 
     try {
       const response = await axios.post(
@@ -46,37 +133,57 @@ export function Login() {
         },
       );
 
-      // Verificar si el mensaje requiere un código de verificación
       if (response.data.message?.includes("Código de verificación enviado")) {
-        Alert.alert("Verificación Requerida", response.data.message);
-        setStep(2); // Cambia al paso de verificación de código
+        setNotification({
+          visible: true,
+          title: "Verificación Requerida",
+          message: response.data.message,
+          type: "warning",
+          onConfirm: () => setNotification({ ...notification, visible: false }),
+        });
+        setStep(2);
       } else if (response.data.token) {
         const token = response.data.token;
-        await AsyncStorage.setItem("username", username); // Guarda el username en AsyncStorage
-        await AsyncStorage.setItem("token", token); // Guarda el token en AsyncStorage
-        Alert.alert("Inicio de sesión exitoso");
-        router.push("/main_page");
+        await AsyncStorage.setItem("username", username);
+        await AsyncStorage.setItem("token", token);
+        setNotification({
+          visible: true,
+          title: "Inicio de sesión exitoso",
+          message: "Has iniciado sesión correctamente.",
+          type: "success",
+          onConfirm: () => {
+            setNotification({ ...notification, visible: false });
+            router.push("/main_page");
+          },
+        });
       }
     } catch (error) {
-      const message = error.response?.data.message;
-      if (message) {
-        Alert.alert("Error", message); // Mensaje de error específico
-      } else {
-        console.log("Error en la solicitud:", error.message);
-        Alert.alert("Error", "Error de conexión");
-      }
+      const message = error.response?.data.message || "Error de conexión";
+      setNotification({
+        visible: true,
+        title: "Error",
+        message,
+        type: "error",
+        onConfirm: () => setNotification({ ...notification, visible: false }),
+      });
     } finally {
-      setLoading(false); // Ocultar indicador de carga
+      setLoading(false);
     }
   };
 
   const handleVerifyCode = async () => {
     if (!verificationCode) {
-      Alert.alert("Error", "Por favor, ingresa el código de verificación.");
+      setNotification({
+        visible: true,
+        title: "Error",
+        message: "Por favor, ingresa el código de verificación.",
+        type: "error",
+        onConfirm: () => setNotification({ ...notification, visible: false }),
+      });
       return;
     }
 
-    setLoading(true); // Mostrar indicador de carga
+    setLoading(true);
 
     try {
       const response = await axios.post(
@@ -91,17 +198,49 @@ export function Login() {
         const token = response.data.token;
         await AsyncStorage.setItem("username", username);
         await AsyncStorage.setItem("token", token);
-        Alert.alert("Inicio de sesión exitoso");
-        router.push("/main_page");
+        setNotification({
+          visible: true,
+          title: "Inicio de sesión exitoso",
+          message: "Has iniciado sesión correctamente.",
+          type: "success",
+          onConfirm: () => {
+            setNotification({ ...notification, visible: false });
+            router.push("/main_page");
+          },
+        });
       } else {
-        Alert.alert("Error", "Código incorrecto o expirado.");
+        setNotification({
+          visible: true,
+          title: "Error",
+          message: "Código incorrecto o expirado.",
+          type: "error",
+          onConfirm: () => setNotification({ ...notification, visible: false }),
+        });
       }
-    } catch (error) {
-      Alert.alert("Error", "Hubo un problema al verificar el código.");
+    } catch {
+      setNotification({
+        visible: true,
+        title: "Error",
+        message: "Hubo un problema al verificar el código.",
+        type: "error",
+        onConfirm: () => setNotification({ ...notification, visible: false }),
+      });
     } finally {
-      setLoading(false); // Ocultar indicador de carga
+      setLoading(false);
     }
   };
+  if (showOnboarding === null) {
+    // Mostrar indicador de carga mientras se verifica AsyncStorage
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#38A169" />
+      </View>
+    );
+  }
+
+  if (showOnboarding) {
+    return <OnboardingScreen onFinish={handleOnboardingFinish} />;
+  }
 
   return (
     <SafeAreaView
@@ -109,6 +248,16 @@ export function Login() {
         Platform.OS === "web" ? styles.safeAreaViewWeb : styles.safeAreaView
       }
     >
+      {/* Notificación */}
+      <NotificationModal
+        visible={notification.visible}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        onConfirm={notification.onConfirm}
+      />
+
+      {/* Contenido del Login */}
       <View style={styles.logoContainer}>
         <Image
           source={labImage}
@@ -118,10 +267,11 @@ export function Login() {
           ]}
           resizeMode="cover"
         />
-        <View
+        <Animated.View
           style={[
             styles.logoOverlay,
             Platform.OS === "web" && styles.logoOverlayWeb,
+            { transform: [{ scale: logoScale }] },
           ]}
         >
           <Image
@@ -132,12 +282,17 @@ export function Login() {
             ]}
             resizeMode="contain"
           />
-        </View>
+        </Animated.View>
       </View>
 
-      <Text style={Platform.OS === "web" ? styles.titleWeb : styles.title}>
+      <Animated.Text
+        style={[
+          Platform.OS === "web" ? styles.titleWeb : styles.title,
+          { opacity: titleOpacity },
+        ]}
+      >
         Bienvenido A VitaEx Labs App!
-      </Text>
+      </Animated.Text>
 
       <View
         style={
@@ -166,48 +321,59 @@ export function Login() {
         )}
       </View>
 
-      {/* Indicador de carga */}
-      {loading && (
-        <ActivityIndicator
-          size="large"
-          color="#38A169"
-          style={{ marginTop: 10 }}
-        />
-      )}
-
-      <Pressable onPress={() => router.push("/change_password_page")}>
-        <Text
-          style={
-            Platform.OS === "web"
-              ? styles.forgotPasswordTextWeb
-              : styles.forgotPasswordText
-          }
-        >
-          ¿Olvidaste tu contraseña?
-        </Text>
-      </Pressable>
+      <Animated.View
+        style={{
+          opacity: forgotPasswordOpacity,
+          transform: [{ translateY: forgotPasswordTranslateY }],
+        }}
+      >
+        <Pressable onPress={() => router.push("/change_password_page")}>
+          <Text
+            style={
+              Platform.OS === "web"
+                ? styles.forgotPasswordTextWeb
+                : styles.forgotPasswordText
+            }
+          >
+            ¿Olvidaste tu contraseña?
+          </Text>
+        </Pressable>
+      </Animated.View>
 
       <Pressable
         style={
           Platform.OS === "web" ? styles.loginButtonWeb : styles.loginButton
         }
         onPress={step === 1 ? handleLogin : handleVerifyCode}
-        disabled={loading} // Desactivar botón mientras se está cargando
+        disabled={loading}
       >
-        <Text style={styles.loginButtonText}>
-          {step === 1 ? "Entrar" : "Verificar Código"}
-        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text style={styles.loginButtonText}>
+            {step === 1 ? "Entrar" : "Verificar Código"}
+          </Text>
+        )}
       </Pressable>
 
-      <View style={styles.registerContainer}>
+      <Animated.View
+        style={[
+          styles.registerContainer,
+          {
+            opacity: registerOpacity,
+            transform: [{ translateY: registerTranslateY }],
+          },
+        ]}
+      >
         <Text style={styles.registerText}>¿No estás registrado?</Text>
         <Pressable onPress={() => router.push("/register_page")}>
           <Text style={styles.registerLink}>Regístrate ahora</Text>
         </Pressable>
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   // Estilos generales
   safeAreaView: {
@@ -324,3 +490,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
+
+export default Login;

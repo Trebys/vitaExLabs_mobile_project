@@ -31,7 +31,6 @@ export default function Layout() {
     "/upload_data_page",
     "/main_page",
     "/my_researchs_page",
-    "/change_password_page",
   ];
 
   // Rutas donde NO debe aparecer el TabBar (Login y Registro)

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, TextInput, StyleSheet, Pressable } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, TextInput, StyleSheet, Pressable, Animated } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 
 const TextInputComponent = ({
@@ -10,8 +10,36 @@ const TextInputComponent = ({
 }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
+  // Referencia para animación
+  const translateY = useRef(new Animated.Value(50)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Animación al montar el componente
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   return (
-    <View style={styles.inputContainer}>
+    <Animated.View
+      style={[
+        styles.inputContainer,
+        {
+          transform: [{ translateY }],
+          opacity,
+        },
+      ]}
+    >
       <TextInput
         style={styles.textInput}
         placeholder={placeholder}
@@ -30,7 +58,7 @@ const TextInputComponent = ({
           />
         </Pressable>
       )}
-    </View>
+    </Animated.View>
   );
 };
 

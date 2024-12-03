@@ -1,125 +1,130 @@
-import React, { useState } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-} from "react-native";
+import React from "react";
+import { Modal, View, Text, StyleSheet, Pressable } from "react-native";
 
-export function NotificationModal({ variant = "single", onConfirm, onCancel }) {
-  const [modalVisible, setModalVisible] = useState(true);
+const NotificationModal = ({
+  visible,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  type = "success", // "success", "error", "warning"
+}) => {
+  const getStyles = () => {
+    switch (type) {
+      case "success":
+        return {
+          buttonBackground: styles.successButton,
+          buttonText: styles.successButtonText,
+        };
+      case "error":
+        return {
+          buttonBackground: styles.errorButton,
+          buttonText: styles.errorButtonText,
+        };
+      case "warning":
+        return {
+          buttonBackground: styles.warningButton,
+          buttonText: styles.warningButtonText,
+        };
+      default:
+        return {
+          buttonBackground: styles.successButton,
+          buttonText: styles.successButtonText,
+        };
+    }
+  };
+
+  const { buttonBackground, buttonText } = getStyles();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Modal */}
-      <Modal
-        transparent={true}
-        visible={modalVisible}
-        animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            {/* Título */}
-            <Text style={styles.modalTitle}>
-              {variant === "single" ? "Notificación" : "Edición de Usuario"}
-            </Text>
-            {/* Mensaje */}
-            <Text style={styles.modalMessage}>
-              {variant === "single"
-                ? "Se han guardado los cambios."
-                : "¿Está seguro que quiere guardar los cambios de este Usuario?"}
-            </Text>
-
-            {/* Botones */}
-            <View style={styles.buttonContainer}>
-              {variant === "double" && (
-                <Pressable
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    onCancel();
-                    setModalVisible(false);
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </Pressable>
-              )}
-              <Pressable
-                style={styles.confirmButton}
-                onPress={() => {
-                  onConfirm();
-                  setModalVisible(false);
-                }}
-              >
-                <Text style={styles.confirmButtonText}>Confirmar</Text>
-              </Pressable>
-            </View>
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onCancel}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.message}>{message}</Text>
+          <View style={styles.singleButtonContainer}>
+            <Pressable style={[buttonBackground]} onPress={onConfirm}>
+              <Text style={buttonText}>Confirmar</Text>
+            </Pressable>
           </View>
         </View>
-      </Modal>
-    </SafeAreaView>
+      </View>
+    </Modal>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  safeArea: {
+  overlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  modalBackground: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Fondo semitransparente
   },
   modalContainer: {
     width: "80%",
     backgroundColor: "white",
-    padding: 20,
     borderRadius: 10,
-    alignItems: "center",
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  modalTitle: {
+  title: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
-  },
-  modalMessage: {
-    fontSize: 14,
-    color: "#555",
     textAlign: "center",
+  },
+  message: {
+    fontSize: 16,
+    color: "#555",
     marginBottom: 20,
+    textAlign: "center",
   },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 8,
-    borderColor: "red",
-    borderWidth: 2,
-    marginRight: 10,
+  singleButtonContainer: {
+    justifyContent: "center",
     alignItems: "center",
   },
-  cancelButtonText: {
-    color: "red",
-    fontWeight: "bold",
-  },
-  confirmButton: {
-    flex: 1,
-    padding: 10,
+  successButton: {
+    backgroundColor: "#009007",
+    paddingVertical: 10,
+    paddingHorizontal: 40,
     borderRadius: 8,
-    backgroundColor: "green",
-    alignItems: "center",
   },
-  confirmButtonText: {
+  successButtonText: {
     color: "white",
     fontWeight: "bold",
+    textAlign: "center",
+  },
+  errorButton: {
+    backgroundColor: "#dc2626",
+    paddingVertical: 10,
+    paddingHorizontal: 40,
+    borderRadius: 8,
+  },
+  errorButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  warningButton: {
+    backgroundColor: "#fbbf24",
+    paddingVertical: 10,
+    paddingHorizontal: 40,
+    borderRadius: 8,
+  },
+  warningButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
+
+export default NotificationModal;

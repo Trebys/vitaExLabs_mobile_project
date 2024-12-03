@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   Pressable,
-  StyleSheet,
   ScrollView,
   Alert,
   Modal,
@@ -15,6 +14,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import xml2js from "react-native-xml2js";
+import UserStyles from "../../styles/UserStyles"; // Importa los estilos desde el archivo externo
 
 export function User() {
   const router = useRouter();
@@ -211,98 +211,113 @@ export function User() {
   const avatarUrl = `https://ui-avatars.com/api/?name=${username}`;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={UserStyles.safeArea}>
       <ScrollView>
-        <View style={styles.profileContainer}>
-          <View style={styles.profileImageWrapper}>
-            <Image style={styles.profileImage} source={{ uri: avatarUrl }} />
-            <Pressable style={styles.editIcon}>
-              <Text style={styles.editIconText}>✏️</Text>
+        <View style={UserStyles.profileContainer}>
+          <View style={UserStyles.profileImageWrapper}>
+            <Image
+              style={UserStyles.profileImage}
+              source={{ uri: avatarUrl }}
+            />
+            <Pressable style={UserStyles.editIcon}>
+              <Text style={UserStyles.editIconText}>✏️</Text>
             </Pressable>
           </View>
-          <Text style={styles.userName}>{username}</Text>
+          <Text style={UserStyles.userName}>{username}</Text>
         </View>
 
-        <View style={styles.optionContainer}>
-          <Pressable style={styles.option} onPress={goToMyData}>
-            <Text style={styles.optionText}>Mis datos</Text>
-            <Text style={styles.optionArrow}>›</Text>
+        <View style={UserStyles.optionContainer}>
+          <Pressable style={UserStyles.option} onPress={goToMyData}>
+            <Text style={UserStyles.optionText}>Mis datos</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={goToStudyInstructions}>
-            <Text style={styles.optionText}>
+          <Pressable style={UserStyles.option} onPress={goToStudyInstructions}>
+            <Text style={UserStyles.optionText}>
               Indicaciones para cargar estudios
             </Text>
-            <Text style={styles.optionArrow}>›</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={goToTopicsOfInterest}>
-            <Text style={styles.optionText}>Temas de interés</Text>
-            <Text style={styles.optionArrow}>›</Text>
+          <Pressable style={UserStyles.option} onPress={goToTopicsOfInterest}>
+            <Text style={UserStyles.optionText}>Temas de interés</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={showPasswordModal}>
-            <Text style={styles.optionText}>
+          <Pressable style={UserStyles.option} onPress={showPasswordModal}>
+            <Text style={UserStyles.optionText}>
               Tiempo para renovar contraseña
             </Text>
-            <Text style={styles.optionArrow}>›</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={goToPremiumUserPlan}>
-            <Text style={styles.optionText}>Planes Premium</Text>
-            <Text style={styles.optionArrow}>›</Text>
+          <Pressable style={UserStyles.option} onPress={goToPremiumUserPlan}>
+            <Text style={UserStyles.optionText}>Planes Premium</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={fetchExchangeRate}>
-            <Text style={styles.optionText}>Ver Tipo de Cambio</Text>
-            <Text style={styles.optionArrow}>›</Text>
+          <Pressable style={UserStyles.option} onPress={fetchExchangeRate}>
+            <Text style={UserStyles.optionText}>Ver Tipo de Cambio</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={goToMinistryOfHealthData}>
-            <Text style={styles.optionText}>Ver Datos Ministerio De Salud</Text>
-            <Text style={styles.optionArrow}>›</Text>
+          <Pressable
+            style={UserStyles.option}
+            onPress={goToMinistryOfHealthData}
+          >
+            <Text style={UserStyles.optionText}>
+              Ver Datos Ministerio De Salud
+            </Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={goToNewsAging}>
-            <Text style={styles.optionText}>
+          <Pressable style={UserStyles.option} onPress={goToNewsAging}>
+            <Text style={UserStyles.optionText}>
               Ver Noticias Sobre Envejecimiento
             </Text>
-            <Text style={styles.optionArrow}>›</Text>
+            <Text style={UserStyles.optionArrow}>›</Text>
           </Pressable>
         </View>
 
-        <View style={styles.logoutContainer}>
-          <Pressable style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
+        <View style={UserStyles.logoutContainer}>
+          <Pressable style={UserStyles.logoutButton} onPress={handleLogout}>
+            <Text style={UserStyles.logoutButtonText}>Cerrar sesión</Text>
           </Pressable>
         </View>
 
         <Modal visible={isPasswordModalVisible} transparent={true}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Renovación de Contraseña</Text>
+          <View style={UserStyles.modalContainer}>
+            <View style={UserStyles.modalContent}>
+              <Text style={UserStyles.modalTitle}>
+                Renovación de Contraseña
+              </Text>
               <Text>{calculateDaysUntilPasswordChange()}</Text>
               <TouchableOpacity
-                style={styles.modalButton}
+                style={UserStyles.modalButton}
                 onPress={closePasswordModal}
               >
-                <Text style={styles.modalButtonText}>Cerrar</Text>
+                <Text style={UserStyles.modalButtonText}>Cerrar</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
         <Modal visible={isModalVisible} transparent={true}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Tipo de Cambio USD a CRC</Text>
+          <View style={UserStyles.modalContainer}>
+            <View style={UserStyles.modalContent}>
+              <Text style={UserStyles.modalTitle}>
+                Tipo de Cambio USD a CRC
+              </Text>
               {exchangeRate ? (
                 <>
-                  <Text style={styles.exchangeText}>
+                  <Text style={UserStyles.exchangeText}>
                     Compra (USD a CRC): {exchangeRate.compra}
                   </Text>
-                  <Text style={styles.exchangeText}>
+                  <Text style={UserStyles.exchangeText}>
                     Venta (USD a CRC): {exchangeRate.venta}
                   </Text>
                 </>
               ) : (
                 <Text>Cargando...</Text>
               )}
-              <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
-                <Text style={styles.modalButtonText}>Cerrar</Text>
+              <TouchableOpacity
+                style={UserStyles.modalButton}
+                onPress={closeModal}
+              >
+                <Text style={UserStyles.modalButtonText}>Cerrar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -311,110 +326,5 @@ export function User() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "white",
-  },
-  profileContainer: {
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  profileImageWrapper: {
-    position: "relative",
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#E0E0E0",
-  },
-  editIcon: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#000",
-    borderRadius: 20,
-    padding: 5,
-  },
-  editIconText: {
-    color: "white",
-    fontSize: 12,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 10,
-  },
-  optionContainer: {
-    marginTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
-  },
-  option: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  optionArrow: {
-    fontSize: 18,
-    color: "#999",
-  },
-  logoutContainer: {
-    marginTop: 30,
-    paddingHorizontal: 20,
-  },
-  logoutButton: {
-    backgroundColor: "red",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  logoutButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 8,
-    width: "80%",
-    alignItems: "center",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  exchangeText: {
-    fontSize: 16,
-    marginVertical: 5,
-  },
-  modalButton: {
-    marginTop: 20,
-    backgroundColor: "#38A169",
-    padding: 10,
-    borderRadius: 8,
-  },
-  modalButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-});
 
 export default User;

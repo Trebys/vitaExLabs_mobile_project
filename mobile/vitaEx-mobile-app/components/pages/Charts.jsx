@@ -233,14 +233,27 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   picker: { height: 50, color: "black" },
-  chartContainer: { marginBottom: 16 },
+  chartContainer: {
+    marginBottom: 32, // Espaciado entre gráficos
+    padding: 10, // Añadir algo de espacio interno
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+  },
   chartTitle: {
-    fontSize: 16,
+    fontSize: 18, // Aumentar el tamaño de la fuente del título
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 16,
     textAlign: "center",
   },
-  chartImage: { height: 200, resizeMode: "contain", marginBottom: 10 },
+  chartImage: {
+    height: 400, // Aumentar la altura de las imágenes
+    resizeMode: "contain",
+    marginBottom: 20, // Separar la imagen del siguiente elemento
+    alignSelf: "center", // Centrar las imágenes
+    width: "100%", // Ajustar la anchura al 100% del contenedor
+  },
 });
 
 export default Charts;

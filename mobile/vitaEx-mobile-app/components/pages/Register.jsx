@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Pressable,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Animated,
 } from "react-native";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
@@ -46,71 +47,31 @@ export function Register() {
 
   const roles = ["Investigador", "Científico", "Colaborador"];
 
+  // Referencias de animación
+  const titleAnim = useRef(new Animated.Value(0)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
+  const modalAnim = useRef(new Animated.Value(0)).current;
+  const tseButtonAnim = useRef(new Animated.Value(0)).current;
+  // Animaciones al cargar el componente
   useEffect(() => {
-    const fetchCountries = async () => {
-      try {
-        const response = await axios.get("http://10.0.2.2:8000/api/paises/");
-        setCountries(response.data);
-      } catch (error) {
-        console.error("Error al obtener los países:", error);
-      }
-    };
-    fetchCountries();
+    Animated.sequence([
+      Animated.timing(titleAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tseButtonAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
-
-  useEffect(() => {
-    const fetchProvinces = async () => {
-      if (selectedCountry) {
-        try {
-          const response = await axios.get(
-            `http://10.0.2.2:8000/api/provincias/${selectedCountry}`,
-          );
-          setProvinces(response.data);
-          setCantons([]);
-          setDistricts([]);
-          setSelectedProvince("");
-        } catch (error) {
-          console.error("Error al obtener las provincias:", error);
-        }
-      }
-    };
-    fetchProvinces();
-  }, [selectedCountry]);
-
-  useEffect(() => {
-    const fetchCantons = async () => {
-      if (selectedProvince) {
-        try {
-          const response = await axios.get(
-            `http://10.0.2.2:8000/api/cantones/${selectedProvince}`,
-          );
-          setCantons(response.data);
-          setDistricts([]);
-          setSelectedCanton("");
-        } catch (error) {
-          console.error("Error al obtener los cantones:", error);
-        }
-      }
-    };
-    fetchCantons();
-  }, [selectedProvince]);
-
-  useEffect(() => {
-    const fetchDistricts = async () => {
-      if (selectedCanton) {
-        try {
-          const response = await axios.get(
-            `http://10.0.2.2:8000/api/distritos/${selectedCanton}`,
-          );
-          setDistricts(response.data);
-          setSelectedDistrict("");
-        } catch (error) {
-          console.error("Error al obtener los distritos:", error);
-        }
-      }
-    };
-    fetchDistricts();
-  }, [selectedCanton]);
 
   const handleTSEConsultation = async () => {
     if (email) {
@@ -248,7 +209,25 @@ export function Register() {
   return (
     <SafeAreaView style={styles.safeAreaView}>
       <ScrollView>
-        <Text style={styles.title}>Regístrate</Text>
+        {/* Animación del título */}
+        <Animated.Text
+          style={[
+            styles.title,
+            {
+              opacity: titleAnim,
+              transform: [
+                {
+                  translateY: titleAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          Regístrate
+        </Animated.Text>
         <Text style={styles.subtitle}>Crea una cuenta para empezar</Text>
 
         <TextInputComponent
@@ -271,9 +250,24 @@ export function Register() {
           value={email}
           onChangeText={setEmail}
         />
-        <Pressable style={styles.tseButton} onPress={handleTSEConsultation}>
-          <Text style={styles.tseButtonText}>Consultar TSE</Text>
-        </Pressable>
+        {/* Animación del botón "Consultar TSE" */}
+        <Animated.View
+          style={{
+            opacity: tseButtonAnim,
+            transform: [
+              {
+                scale: tseButtonAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <Pressable style={styles.tseButton} onPress={handleTSEConsultation}>
+            <Text style={styles.tseButtonText}>Consultar TSE</Text>
+          </Pressable>
+        </Animated.View>
 
         <TextInputComponent
           placeholder="Color Favorito"
@@ -327,16 +321,39 @@ export function Register() {
           </Text>
         </View>
 
-        <Pressable style={styles.registerButton} onPress={handleRegister}>
-          <Text style={styles.registerButtonText}>Registrarse</Text>
-        </Pressable>
+        {/* Animación del botón de registro */}
+        <Animated.View
+          style={{
+            opacity: buttonAnim,
+            transform: [
+              {
+                scale: buttonAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <Pressable style={styles.registerButton} onPress={handleRegister}>
+            <Text style={styles.registerButtonText}>Registrarse</Text>
+          </Pressable>
+        </Animated.View>
 
         <Modal
           visible={verificationModalVisible}
           animationType="slide"
           transparent
         >
-          <View style={styles.modalContainer}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                opacity: modalAnim,
+                transform: [{ scale: modalAnim }],
+              },
+            ]}
+          >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Verificación de Correo</Text>
               <TextInput
@@ -356,7 +373,7 @@ export function Register() {
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </Pressable>
             </View>
-          </View>
+          </Animated.View>
         </Modal>
       </ScrollView>
     </SafeAreaView>

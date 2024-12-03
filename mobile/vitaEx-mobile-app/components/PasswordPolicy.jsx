@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import axios from "axios";
 
@@ -15,9 +15,15 @@ export function PasswordPolicy({ password }) {
     specialChar: false,
     noRepeat: false,
   });
+  const [animations] = useState({
+    length: new Animated.Value(0),
+    uppercase: new Animated.Value(0),
+    lowercase: new Animated.Value(0),
+    specialChar: new Animated.Value(0),
+    noRepeat: new Animated.Value(0),
+  });
 
   useEffect(() => {
-    // Solicitud para obtener la política de contraseñas
     async function fetchPasswordPolicy() {
       try {
         const response = await axios.get(
@@ -32,7 +38,6 @@ export function PasswordPolicy({ password }) {
   }, []);
 
   useEffect(() => {
-    // Validar el estado de la contraseña según la política
     const validatePassword = () => {
       const lengthValid =
         password.length >= passwordPolicy.min_length &&
@@ -42,16 +47,30 @@ export function PasswordPolicy({ password }) {
       const specialCharValid = /\W/.test(password);
       const noRepeatValid = new Set(password).size === password.length;
 
-      setPolicyStatus({
+      const updatedStatus = {
         length: lengthValid,
         uppercase: uppercaseValid,
         lowercase: lowercaseValid,
         specialChar: specialCharValid,
         noRepeat: noRepeatValid,
-      });
+      };
+
+      setPolicyStatus(updatedStatus);
+      triggerAnimations(updatedStatus);
     };
+
     validatePassword();
   }, [password, passwordPolicy]);
+
+  const triggerAnimations = (updatedStatus) => {
+    Object.keys(updatedStatus).forEach((key) => {
+      Animated.timing(animations[key], {
+        toValue: updatedStatus[key] ? 1 : 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    });
+  };
 
   return (
     <View style={styles.passwordPolicyContainer}>
@@ -62,37 +81,64 @@ export function PasswordPolicy({ password }) {
       <PolicyItem
         label={`Longitud: ${passwordPolicy.min_length} a ${passwordPolicy.max_length} caracteres`}
         valid={policyStatus.length}
+        animation={animations.length}
       />
       <PolicyItem
         label="Debe contener al menos una letra mayúscula"
         valid={policyStatus.uppercase}
+        animation={animations.uppercase}
       />
       <PolicyItem
         label="Debe contener al menos una letra minúscula"
         valid={policyStatus.lowercase}
+        animation={animations.lowercase}
       />
       <PolicyItem
         label="Debe contener al menos un carácter especial"
         valid={policyStatus.specialChar}
+        animation={animations.specialChar}
       />
       <PolicyItem
         label="No debe tener caracteres repetidos"
         valid={policyStatus.noRepeat}
+        animation={animations.noRepeat}
       />
     </View>
   );
 }
 
-function PolicyItem({ label, valid }) {
+function PolicyItem({ label, valid, animation }) {
+  const animatedColor = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#FF6B6B", "#38A169"], // De rojo a verde
+  });
+
+  const animatedScale = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 1], // Escala de 90% a 100%
+  });
+
   return (
-    <View style={styles.policyItem}>
+    <Animated.View
+      style={[
+        styles.policyItem,
+        { transform: [{ scale: animatedScale }], borderColor: animatedColor },
+      ]}
+    >
       <FontAwesome
         name={valid ? "check-circle" : "times-circle"}
         size={16}
         color={valid ? "green" : "red"}
       />
-      <Text style={valid ? styles.validText : styles.invalidText}>{label}</Text>
-    </View>
+      <Animated.Text
+        style={[
+          valid ? styles.validText : styles.invalidText,
+          { color: animatedColor },
+        ]}
+      >
+        {label}
+      </Animated.Text>
+    </Animated.View>
   );
 }
 
@@ -101,25 +147,39 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#f0f4f8",
+    backgroundColor: "#f9fafb",
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
   passwordPolicyTitle: {
     fontWeight: "bold",
-    marginBottom: 8,
-    fontSize: 16,
+    marginBottom: 12,
+    fontSize: 18,
+    color: "#1f2937",
   },
   policyItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 4,
+    marginVertical: 8,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 2,
   },
   validText: {
-    color: "green",
     marginLeft: 8,
+    fontWeight: "bold",
+    fontSize: 14,
   },
   invalidText: {
-    color: "red",
     marginLeft: 8,
+    fontWeight: "bold",
+    fontSize: 14,
   },
 });
